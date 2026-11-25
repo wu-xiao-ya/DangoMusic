@@ -26,7 +26,7 @@ import org.lwjgl.opengl.GL20
 
 import kotlin.math.max
 
-/** 1.8.9 的绘图实现：OpenGL 固定管线 + 原版的 FontRenderer / TextureManager */
+/** 旧版 Forge 的绘图实现：OpenGL 固定管线 + 原版的 FontRenderer / TextureManager */
 object LegacyGfx : Gfx {
 
     override val textures: Textures = LegacyTextures
@@ -164,12 +164,12 @@ object LegacyText : TextCanvas {
     override fun endSmooth() = LegacyGfx.resetColorAndTexture()
 
     override fun pixelText(text: String, x: Float, y: Float, argb: Int, shadow: Boolean) {
-        mc.fontRendererObj.drawString(text, x, y, argb, shadow)
+        legacyFontRenderer.drawString(text, x, y, argb, shadow)
     }
 
-    override fun pixelWidth(text: String): Float = mc.fontRendererObj.getStringWidth(text).toFloat()
+    override fun pixelWidth(text: String): Float = legacyFontRenderer.getStringWidth(text).toFloat()
 
-    override fun pixelCharWidth(c: Char): Float = mc.fontRendererObj.getCharWidth(c).toFloat()
+    override fun pixelCharWidth(c: Char): Float = legacyFontRenderer.getCharWidth(c).toFloat()
 
     private var screenCaps: GlCaps.Saved? = null
 
@@ -294,6 +294,6 @@ object LegacyHud : HudCanvas {
         // Gui.drawRect 画完会关掉混合，文字前重新打开
         GlStateManager.enableTexture2D()
         GlStateManager.enableBlend()
-        mc.fontRendererObj.drawString(text, x, y, argb, shadow)
+        legacyFontRenderer.drawString(text, x, y, argb, shadow)
     }
 }

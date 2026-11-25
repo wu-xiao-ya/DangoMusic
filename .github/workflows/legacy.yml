@@ -1,0 +1,70 @@
+name: Legacy Forge
+
+on:
+  push:
+    branches: [forge-1.12.2]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Forge ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - minecraft: "1.8.9"
+            directory: legacy
+          - minecraft: "1.12.2"
+            directory: legacy/forge112
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+      - name: Fetch upstream 1.8.9 build plugin
+        if: matrix.minecraft == '1.8.9'
+        uses: actions/checkout@v4
+        with:
+          repository: ManTouQAQ/ForgeGradle-Modern-2.1
+          ref: 94fc6aa3bdefbfd848256c9a2e365739232ee071
+          path: .ci/forgegradle
+          persist-credentials: false
+      - name: Build upstream 1.8.9 plugin from source
+        if: matrix.minecraft == '1.8.9'
+        working-directory: .ci/forgegradle
+        run: bash gradlew --no-daemon publishToMavenLocal
+      - name: Build production jar
+        working-directory: ${{ matrix.directory }}
+        run: bash gradlew --no-daemon clean build --stacktrace
+      - name: Verify remapped production jar
+        run: python3 legacy/verification/verify_archive.py ${{ matrix.minecraft }} ${{ matrix.directory }}/build/libs/DangoMusic-*+${{ matrix.minecraft }}.jar
+      - name: Decode and seek in the shipped JAR
+        if: matrix.minecraft == '1.12.2'
+        shell: bash
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ffmpeg
+          fi
+          qa="$RUNNER_TEMP/dango-audio"
+          mkdir -p "$qa"
+          for codec in mp3 ogg flac; do
+            ffmpeg -v error -f lavfi -i sine=frequency=440:sample_rate=44100:duration=1 "$qa/tone.$codec"
+          done
+          jar=(legacy/forge112/build/libs/DangoMusic-*+1.12.2.jar)
+          gson=$(find "$HOME/.gradle/caches" -name gson-2.2.4.jar -print -quit)
+          javac -cp "${jar[0]}:$gson" -d "$qa" legacy/forge112/verification/ArtifactSmoke.java
+          java -cp "$qa:${jar[0]}:$gson" ArtifactSmoke "$qa"/tone.*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DangoMusic-Forge-${{ matrix.minecraft }}
+          path: ${{ matrix.directory }}/build/libs/DangoMusic-*+${{ matrix.minecraft }}.jar
+          if-no-files-found: error

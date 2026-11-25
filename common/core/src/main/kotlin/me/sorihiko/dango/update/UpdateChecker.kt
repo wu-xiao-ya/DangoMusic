@@ -43,24 +43,25 @@ object UpdateChecker {
     private var ticks = 0
 
     /** 这个 jar 的版本号和游戏版本（构建时写进 dangomusic-build.properties），读不到时为空 */
-    val currentVersion: String get() = build.first
-    val target: String get() = build.second
+    val currentVersion: String get() = buildValue("version")
+    val target: String get() = buildValue("target")
+    private val updateRepository: String get() = buildValue("updateRepository")
 
-    private val build: Pair<String, String> by lazy {
+    private val build by lazy {
+        val p = Properties()
         try {
-            val p = Properties()
             UpdateChecker::class.java.getResourceAsStream("/dangomusic-build.properties")?.use { p.load(it) }
-            val v = p.getProperty("version", "").trim()
-            val t = p.getProperty("target", "").trim()
-            // 没经过构建替换的占位符也当作读不到
-            (if (v.startsWith("$")) "" else v) to (if (t.startsWith("$")) "" else t)
         } catch (_: Exception) {
-            "" to ""
         }
+        p
     }
 
+    private fun buildValue(name: String): String =
+        build.getProperty(name, "").trim().takeUnless { it.startsWith("$") }.orEmpty()
+
     private val cacheFile: File? get() = try {
-        DangoMusic.instance.clientDir.resolve("update_check.json").toFile()
+        val file = if (updateRepository.isEmpty()) "update_check.json" else "update_check-${updateRepository.replace('/', '-')}-$target.json"
+        DangoMusic.instance.clientDir.resolve(file).toFile()
     } catch (_: Throwable) {
         null
     }
@@ -87,7 +88,9 @@ object UpdateChecker {
         val release = if (cache != null && now - cache.first < CACHE_MS) {
             cache.second
         } else {
-            fetchLatest(FirebaseConfig.RELAY_URL, GITHUB_LATEST)?.also { writeCache(now, it) } ?: cache?.second
+            val latest = if (updateRepository.isEmpty()) fetchLatest(FirebaseConfig.RELAY_URL, GITHUB_LATEST)
+                else fetchLatest("", "https://api.github.com/repos/$updateRepository/releases/latest")
+            latest?.also { writeCache(now, it) } ?: cache?.second
         } ?: return
         available = infoFor(release, current, target)
         available?.let { DangoLogger.info("Dango Music {} is available (this is {})", it.version, current) }
@@ -98,7 +101,8 @@ object UpdateChecker {
     fun infoFor(release: Release, current: String, target: String): Info? {
         if (release.version.isEmpty() || compareVersions(release.version, current) <= 0) return null
         val jar = "DangoMusic-" + release.version + "+" + target + ".jar"
-        val download = release.assets.firstOrNull { it.first == jar }?.second ?: release.page
+        val download = release.assets.firstOrNull { it.first == jar }?.second
+            ?: if (updateRepository.isEmpty()) release.page else return null
         return Info(release.version, release.page, download)
     }
 

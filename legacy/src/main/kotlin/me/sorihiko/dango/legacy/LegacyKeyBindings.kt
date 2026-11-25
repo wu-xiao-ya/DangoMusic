@@ -27,12 +27,12 @@ object LegacyKeyBindings {
         val settings = mc.gameSettings ?: return
         var dirty = false
         if (links == null) {
-            val saved = savedPlayerKeys(mc.mcDataDir.toPath().resolve("options.txt"))
+            val saved = savedPlayerKeys(legacyGameDir.toPath().resolve("options.txt"))
             links = bindings.map { binding ->
                 val mapping = mappings.getValue(binding.action)
                 val before = mapping.keyCode
                 KeyBindingLink(binding, { mapping.keyCode }, { mapping.keyCode = it },
-                    saved[binding.action.translationKey]?.toIntOrNull())
+                    saved[binding.action.translationKey]?.substringBefore(':')?.toIntOrNull())
                     .also { if (mapping.keyCode != before) dirty = true }
             }
         }

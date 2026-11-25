@@ -6,6 +6,8 @@ import me.sorihiko.dango.events.HudRenderEvent
 import me.sorihiko.dango.events.TickEvent
 import me.sorihiko.dango.events.WorldRenderEndEvent
 import me.sorihiko.dango.legacy.LegacyGl
+import me.sorihiko.dango.legacy.chatCopyAt
+import me.sorihiko.dango.legacy.suppressBackgroundMusic
 
 import me.sorihiko.dango.music.Dance
 import net.minecraft.client.renderer.GlStateManager
@@ -28,9 +30,7 @@ class ForgeBridge {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     fun onChatMouse(e: net.minecraftforge.client.event.GuiScreenEvent.MouseInputEvent.Pre) {
         if (e.gui !is net.minecraft.client.gui.GuiChat || org.lwjgl.input.Mouse.getEventButton() != 0 || !org.lwjgl.input.Mouse.getEventButtonState()) return
-        val chat = net.minecraft.client.Minecraft.getMinecraft().ingameGUI.chatGUI
-        val component = chat.getChatComponent(org.lwjgl.input.Mouse.getX(), org.lwjgl.input.Mouse.getY()) ?: return
-        val value = me.sorihiko.dango.legacy.LegacyChatCopy.copyValue(component.chatStyle.chatClickEvent) ?: return
+        val value = chatCopyAt(org.lwjgl.input.Mouse.getX(), org.lwjgl.input.Mouse.getY()) ?: return
         net.minecraft.client.gui.GuiScreen.setClipboardString(value)
         e.isCanceled = true
     }
@@ -56,7 +56,7 @@ class ForgeBridge {
     /** 原版音乐让路：放歌时拦掉原版要开始放的背景音乐（音乐盒是 RECORDS，不受影响） */
     @SubscribeEvent
     fun onPlaySound(e: net.minecraftforge.client.event.sound.PlaySoundEvent) {
-        if (me.sorihiko.dango.platform.VanillaMusicHold.active && e.category == net.minecraft.client.audio.SoundCategory.MUSIC) e.result = null
+        if (me.sorihiko.dango.platform.VanillaMusicHold.active) suppressBackgroundMusic(e)
     }
 
     @SubscribeEvent

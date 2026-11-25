@@ -19,6 +19,21 @@ popd
 rem "+" in the file name means "join files" to copy, so use xcopy
 for %%f in (legacy\build\libs\DangoMusic-%VER%+1.8.9.jar) do xcopy /y /q "%%f" dist\ >nul
 
+rem 1.12.2 has an independent port version and shares the Java 8 toolchain.
+for /f "tokens=2 delims==" %%v in ('findstr /b "portVersion=" legacy\forge112\gradle.properties') do set "PORT_VER=%%v"
+echo.
+echo === 1.12.2 (Forge) ===
+pushd legacy\forge112
+call gradlew.bat build
+if errorlevel 1 (
+    popd
+    echo 1.12.2 build failed
+    exit /b 1
+)
+popd
+xcopy /y /q "legacy\forge112\build\libs\DangoMusic-%PORT_VER%+1.12.2.jar" dist\ >nul
+if errorlevel 1 exit /b 1
+
 rem 1.20.1+ (Fabric / Forge / NeoForge) need JDK 21 (set DANGO_JDK21 to override the default path)
 if not defined DANGO_JDK21 set "DANGO_JDK21=C:\Program Files\Java\jdk-21"
 echo.

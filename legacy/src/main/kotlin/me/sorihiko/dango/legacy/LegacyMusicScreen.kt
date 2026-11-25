@@ -7,7 +7,7 @@ import net.minecraft.client.gui.GuiMainMenu
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 
-/** 内置播放器在 1.8.9 里的外壳：把原版界面的事件转给共用的 [me.sorihiko.dango.music.MusicScreen] */
+/** 内置播放器在旧版 Forge 里的外壳：把原版界面的事件转给共用的 [me.sorihiko.dango.music.MusicScreen] */
 class LegacyMusicScreen(
     /** 关闭后回到哪个界面（null = 回到游戏） */
     private val parent: GuiScreen? = null,
@@ -38,11 +38,11 @@ class LegacyMusicScreen(
     override fun doesGuiPauseGame() = false
 
     override fun updateScreen() {
-        if (mc.theWorld == null && parent is GuiMainMenu) parent.updateScreen()
+        if (!hasClientWorld && parent is GuiMainMenu) parent.updateScreen()
     }
 
     override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
-        val menuBackdrop = mc.theWorld == null && parent is GuiMainMenu
+        val menuBackdrop = !hasClientWorld && parent is GuiMainMenu
         if (menuBackdrop) {
             net.minecraft.client.renderer.GlStateManager.disableAlpha()
             panoramaMethod.invoke(parent, mouseX, mouseY, partialTicks)
