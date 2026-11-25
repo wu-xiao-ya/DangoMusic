@@ -84,8 +84,15 @@ jobs:
           done
           jar=(${{ matrix.directory }}/build/libs/DangoMusic-*+${{ matrix.minecraft }}.jar)
           gson=$(find "$HOME/.gradle/caches" -name gson-2.2.4.jar -print -quit)
-          "$JAVA_HOME_8_X64/bin/javac" -cp "${jar[0]}:$gson" -d "$qa" legacy/forge112/verification/ArtifactSmoke.java
-          "$JAVA_HOME_8_X64/bin/java" -cp "$qa:${jar[0]}:$gson" ArtifactSmoke "${{ matrix.minecraft }}" "$qa"/tone.*
+          log4j=$(find "$HOME/.gradle/caches" -name log4j-api-2.0-beta9.jar -print -quit)
+          if [[ -z "$log4j" ]]; then
+            log4j="$qa/log4j-api-2.17.2.jar"
+            curl -fsSL --retry 3 -o "$log4j" https://repo.maven.apache.org/maven2/org/apache/logging/log4j/log4j-api/2.17.2/log4j-api-2.17.2.jar
+          fi
+          cp="$qa:${jar[0]}:$gson:$log4j"
+          "$JAVA_HOME_8_X64/bin/javac" -cp "$cp" -d "$qa" legacy/forge112/verification/{ArtifactSmoke,SeekResumeSmoke}.java
+          "$JAVA_HOME_8_X64/bin/java" -cp "$cp" ArtifactSmoke "${{ matrix.minecraft }}" "$qa"/tone.*
+          "$JAVA_HOME_8_X64/bin/java" -cp "$cp" SeekResumeSmoke "$qa/tone.ogg"
       - uses: actions/upload-artifact@v4
         with:
           name: DangoMusic-Forge-${{ matrix.minecraft }}
