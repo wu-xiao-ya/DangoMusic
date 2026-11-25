@@ -17,6 +17,7 @@ import me.sorihiko.dango.module.values.FloatValue
 import me.sorihiko.dango.module.values.ModuleValue
 import me.sorihiko.dango.music.CoverCache
 import me.sorihiko.dango.music.MusicPlayer
+import me.sorihiko.dango.music.NeteaseTrack
 import me.sorihiko.dango.ui.LayoutBounds
 import me.sorihiko.dango.ui.ShadowStyle
 import me.sorihiko.dango.ui.ShapeStyle
@@ -47,6 +48,9 @@ class DynamicIslandModule : Module() {
 
     @ModuleValue("Show now playing", "Show what the built-in player is playing")
     private val showMusic = BooleanValue(true)
+
+    @ModuleValue("Show player status with music", "Keep player name, FPS and time above the current song")
+    private val showStatusWithMusic = BooleanValue(false)
 
     @ModuleValue("Song notify", "Expand to show the song on track change or pause")
     private val songNotify = BooleanValue(true)
@@ -143,13 +147,10 @@ class DynamicIslandModule : Module() {
         return Kind.IDLE
     }
 
-    private fun musicIdle() = showMusic.get() && MusicPlayer.shownTrack != null && MusicPlayer.shownActive
-
     // ---------------------------------------------------------------- 尺寸（逻辑像素）
 
-    private fun sizeOf(kind: Kind): Pair<Float, Float> = when (kind) {
+    private fun sizeOf(kind: Kind, t: NeteaseTrack?, musicIdle: Boolean, statusWidth: Float): Pair<Float, Float> = when (kind) {
         Kind.SONG -> {
-            val t = MusicPlayer.shownTrack
             val tw = if (t == null) 0f else max(
                 width(t.name, 14f, Theme.FONT_SEMIBOLD).coerceAtMost(260f),
                 width(t.artists.joinToString(" / "), 11f).coerceAtMost(260f),
@@ -160,11 +161,10 @@ class DynamicIslandModule : Module() {
             val tw = max(width(updateTitle(), 13f, Theme.FONT_SEMIBOLD), width(I18n.text("Copy the download link in the player's settings"), 11f))
             (16f + 8f + 10f + tw.coerceAtMost(320f) + 18f) to 52f
         }
-        Kind.IDLE -> if (musicIdle()) {
-            val t = MusicPlayer.shownTrack!!
+        Kind.IDLE -> if (musicIdle && t != null) {
             (9f + 22f + 9f + width(t.name, 12f, Theme.FONT_SEMIBOLD).coerceAtMost(170f) + 12f + 14f + 12f) to 32f
         } else {
-            (14f + 6f + 8f + idleWidth() + 16f) to 32f
+            statusWidth to 32f
         }
     }
 
@@ -179,9 +179,8 @@ class DynamicIslandModule : Module() {
         return parts
     }
 
-    private fun idleWidth(): Float {
-        val parts = idleParts()
-        var x = 0f
+    private fun idleWidth(parts: List<Pair<String, Color>>): Float {
+        var x = 28f + 16f
         parts.forEachIndexed { i, (s, _) ->
             if (i > 0) x += width("  ·  ", 12f)
             x += width(s, 12f, if (i == 0) Theme.FONT_SEMIBOLD else Theme.FONT_REGULAR)
@@ -214,7 +213,19 @@ class DynamicIslandModule : Module() {
         }
 
         // 弹簧：略带回弹，接近 iOS 灵动岛的手感
-        val (tw, th) = sizeOf(want)
+        val track = MusicPlayer.shownTrack
+        val musicIdle = showMusic.get() && track != null && MusicPlayer.shownActive
+        val combined = showStatusWithMusic.get() && showMusic.get() && track != null
+        fun hasStatusRow(kind: Kind) = combined && (kind == Kind.SONG || (kind == Kind.IDLE && musicIdle))
+        val targetStatus = hasStatusRow(want)
+        val shownStatus = hasStatusRow(shown)
+        val needsIdle = !musicIdle && (want == Kind.IDLE || shown == Kind.IDLE)
+        val parts = if (needsIdle || targetStatus || shownStatus) idleParts() else emptyList()
+        val statusWidth = if (parts.isEmpty()) 0f else idleWidth(parts)
+        val targetSize = sizeOf(want, track, musicIdle, statusWidth)
+        val (targetWidth, targetHeight) = targetSize
+        val tw = if (targetStatus) max(targetWidth, statusWidth) else targetWidth
+        val th = if (targetStatus) targetHeight + 32f else targetHeight
         val stiff = 230f
         val damp = 24f
         vw += ((tw - w) * stiff - vw * damp) * dt
@@ -249,18 +260,25 @@ class DynamicIslandModule : Module() {
             }
 
             // 内容按目标尺寸排版，在当前胶囊里居中，超出部分裁掉
-            val (cw, ch) = sizeOf(shown)
-            val cb = LayoutBounds(pill.x + (w - cw) / 2f, pill.y + (h - ch) / 2f, cw, ch)
+            val (cw, ch) = if (shown == want) targetSize else sizeOf(shown, track, musicIdle, statusWidth)
+            val contentY = if (shownStatus) pill.y + 32f else pill.y + (h - ch) / 2f
+            val cb = LayoutBounds(pill.x + (w - cw) / 2f, contentY, cw, ch)
             val scX = (pill.x * k).toInt()
             val scY = (platform.windowHeight - (pill.y + h) * k).toInt()
             ctx.scissor(scX, scY, (w * k).toInt() + 1, (h * k).toInt() + 1)
 
             mt.clear()
             mt.clip = pill
+            if (shownStatus) {
+                val status = LayoutBounds(pill.x + (w - statusWidth) / 2f, pill.y, statusWidth, 32f)
+                ctx.pushOpacity(if (targetStatus) 1f else contentAlpha)
+                drawIdle(ctx, status, parts)
+                ctx.popOpacity()
+            }
             ctx.pushOpacity(contentAlpha)
             when (shown) {
-                Kind.IDLE -> if (musicIdle()) drawMusicIdle(ctx, cb) else drawIdle(ctx, cb)
-                Kind.SONG -> drawSong(ctx, cb)
+                Kind.IDLE -> if (musicIdle && track != null) drawMusicIdle(ctx, cb, track) else drawIdle(ctx, cb, parts)
+                Kind.SONG -> if (track != null) drawSong(ctx, cb, track)
                 Kind.UPDATE -> drawUpdate(ctx, cb)
             }
             ctx.popOpacity()
@@ -272,12 +290,12 @@ class DynamicIslandModule : Module() {
         }
     }
 
-    private fun drawIdle(ctx: GuiCanvas, b: LayoutBounds) {
+    private fun drawIdle(ctx: GuiCanvas, b: LayoutBounds, parts: List<Pair<String, Color>>) {
         val cy = b.y + b.height / 2f
         ctx.drawShape(LayoutBounds(b.x + 14f, cy - 3f, 6f, 6f), ShapeStyle(Theme.GREEN, 3f))
         var x = b.x + 28f
         val ty = cy - 12f * 0.39f
-        idleParts().forEachIndexed { i, (s, c) ->
+        parts.forEachIndexed { i, (s, c) ->
             if (i > 0) {
                 text(ctx, "  ·  ", x, ty, 12f, Theme.TEXT_TERTIARY)
                 x += width("  ·  ", 12f)
@@ -288,8 +306,7 @@ class DynamicIslandModule : Module() {
         }
     }
 
-    private fun drawMusicIdle(ctx: GuiCanvas, b: LayoutBounds) {
-        val t = MusicPlayer.shownTrack ?: return
+    private fun drawMusicIdle(ctx: GuiCanvas, b: LayoutBounds, t: NeteaseTrack) {
         // 胶囊两头是半圆：封面往里挪一点、圆角跟着胶囊的弧度走，看起来才居中
         val cover = LayoutBounds(b.x + 9f, b.y + 5f, 22f, 22f)
         drawCover(ctx, cover, t.let { CoverCache.trackRounded(it, 0.36f) ?: CoverCache.track(it) })
@@ -310,8 +327,7 @@ class DynamicIslandModule : Module() {
         text(ctx, trim(I18n.text("Copy the download link in the player's settings"), tw, 11f), tx, b.y + 30f, 11f, Theme.TEXT_SECONDARY)
     }
 
-    private fun drawSong(ctx: GuiCanvas, b: LayoutBounds) {
-        val t = MusicPlayer.shownTrack ?: return
+    private fun drawSong(ctx: GuiCanvas, b: LayoutBounds, t: NeteaseTrack) {
         val cover = LayoutBounds(b.x + 10f, b.y + 10f, 56f, 56f)
         drawCover(ctx, cover, CoverCache.trackRounded(t) ?: CoverCache.track(t))
         val playing = MusicPlayer.shownState == MusicPlayer.State.PLAYING

@@ -98,6 +98,8 @@ Show what the built-in player is playing	显示内置播放器的当前歌曲
 Song notify	歌曲通知
 Expand to show the song on track change or pause	切歌或暂停时展开显示歌曲
 Island size	灵动岛大小
+Show player status with music	同时显示玩家状态
+Keep player name, FPS and time above the current song	在当前歌曲上方显示玩家名、帧率和时间
 Notify time	通知时长
 How long song notifications stay (seconds)	歌曲通知的显示时间（秒）
 Home	首页
