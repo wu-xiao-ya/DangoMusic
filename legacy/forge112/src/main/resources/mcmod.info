@@ -1,0 +1,14 @@
+[
+  {
+    "modid": "dangomusic",
+    "name": "Dango Music",
+    "description": "Listen to NetEase Cloud Music, QQ Music and Kugou in Minecraft. Independent Forge 1.12.2 port.",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "https://github.com/wu-xiao-ya/DangoMusic",
+    "authorList": ["Sorihiko"],
+    "credits": "Forge 1.12.2 contributions by kochegarr and wu-xiao-ya, based on Sorihiko/DangoMusic v1.7.6.",
+    "logoFile": "logo.png",
+    "dependencies": []
+  }
+]

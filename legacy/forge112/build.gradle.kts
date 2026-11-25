@@ -1,5 +1,6 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import net.minecraftforge.gradle.userdev.UserDevExtension
+import java.util.Locale
 import java.util.Properties
 
 buildscript {
@@ -57,8 +58,8 @@ kotlin {
 
 tasks.processResources {
     from("../src/main/resources") {
-        exclude("dangomusic-build.properties")
-        filesMatching("assets/dangomusic/lang/*.lang") { name = name.lowercase() }
+        exclude("dangomusic-build.properties", "mcmod.info")
+        filesMatching("assets/dangomusic/lang/*.lang") { name = name.toLowerCase(Locale.ROOT) }
     }
     from("../../LICENSE") { into("META-INF/licenses") }
     inputs.property("version", portVersion)
