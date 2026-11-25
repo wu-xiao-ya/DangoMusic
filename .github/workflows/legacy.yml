@@ -41,6 +41,10 @@ jobs:
         if: matrix.minecraft == '1.8.9'
         working-directory: .ci/forgegradle
         run: bash gradlew --no-daemon publishToMavenLocal
+      - name: Generate 1.8.9 Forge compile jar
+        if: matrix.minecraft == '1.8.9'
+        working-directory: legacy
+        run: bash gradlew --no-daemon setupCiWorkspace --stacktrace
       - name: Build production jar
         working-directory: ${{ matrix.directory }}
         run: bash gradlew --no-daemon clean build --stacktrace

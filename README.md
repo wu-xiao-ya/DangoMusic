@@ -6,7 +6,7 @@
 
 本分支由 wu-xiao-ya 维护，基于 Sorihiko 的 Dango Music `v1.7.6`，沿用 kochegarr 在上游 PR #32 中验证的 Forge 1.12.2 接口适配。移植版本为 `1.7.6-port.1`，修改日期为 2026-11-25，许可证为 GPL-3.0。[上游正式版](https://github.com/Sorihiko/DangoMusic/releases/tag/v1.7.6) · [原始适配贡献](https://github.com/Sorihiko/DangoMusic/pull/32)
 
-- **安装**。将 `DangoMusic-1.7.6-port.1+1.12.2.jar` 放入 Forge 1.12.2 客户端实例的 `mods` 目录，使用 Java 8 启动。在主菜单点击音乐按钮，或在游戏中按默认键 `M`。编译目标为 Forge `14.23.5.2860`。[移植版构建](https://github.com/wu-xiao-ya/DangoMusic/actions/workflows/legacy.yml) · [移植版发行页](https://github.com/wu-xiao-ya/DangoMusic/releases)
+- **安装**。将 `DangoMusic-1.7.6-port.1+1.12.2.jar` 放入 Forge 1.12.2 客户端实例的 `mods` 目录，使用 Java 8 启动。在主菜单或游戏中按默认键 `M` 打开播放器。编译目标为 Forge `14.23.5.2860`。[移植版构建](https://github.com/wu-xiao-ya/DangoMusic/actions/workflows/legacy.yml) · [移植版发行页](https://github.com/wu-xiao-ya/DangoMusic/releases)
 - **一起听**。同一局域网存档内，房主和参加者安装模组后即可直连。跨存档或跨游戏版本时，每位参加者可将仓库中的 `firebase.properties.example` 复制到各自实例的 `config/dangomusic/firebase.properties`，填入同一项目的 `apiKey` 和 `databaseUrl`，再重启游戏。Firebase 项目需要开启匿名登录、Realtime Database 并应用仓库中的数据库规则。普通专服玩家可以只在客户端安装。
 - **从源码构建**。使用 JDK 8，在 `legacy/forge112` 下运行 `gradlew.bat clean build`（Linux/macOS 使用 `./gradlew clean build`），从该目录的 `build/libs` 取带 `+1.12.2.jar` 的成品。旧版 Forge 共用播放器、平台接口以外的界面代码、字体和资源。
 
