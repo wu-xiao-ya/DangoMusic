@@ -29,6 +29,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "8"
+      - name: Configure Maven Central mirror for the runner
+        run: |
+          mkdir -p "$HOME/.gradle/init.d"
+          cp legacy/verification/ci-repositories.gradle "$HOME/.gradle/init.d/"
       - name: Fetch upstream 1.8.9 build plugin
         if: matrix.minecraft == '1.8.9'
         uses: actions/checkout@v4

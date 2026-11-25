@@ -1,0 +1,14 @@
+// Maven Central's Google Cloud mirror avoids rate limits on shared GitHub runners.
+// Plugin markers which only exist on the Plugin Portal still resolve there.
+def centralMirror = "https://maven-central.storage-download.googleapis.com/maven2/"
+
+beforeSettings { settings ->
+    settings.pluginManagement.repositories {
+        maven { url = centralMirror }
+        gradlePluginPortal()
+    }
+}
+allprojects {
+    buildscript.repositories.maven { url = centralMirror }
+    repositories.maven { url = centralMirror }
+}
