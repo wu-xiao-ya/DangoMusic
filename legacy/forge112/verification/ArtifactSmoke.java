@@ -1,5 +1,6 @@
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 
 import me.sorihiko.dango.music.AudioDecoder;
@@ -9,7 +10,9 @@ import me.sorihiko.dango.update.UpdateChecker;
 /** Runs against the reobfuscated, shaded distribution on Java 8, outside Gradle's classpath. */
 public class ArtifactSmoke {
     public static void main(String[] args) throws Exception {
-        for (String file : args) {
+        require(args.length == 4, "Expected the Minecraft version and MP3, Ogg and FLAC fixtures");
+        String target = args[0];
+        for (String file : Arrays.copyOfRange(args, 1, args.length)) {
             byte[] bytes = Files.readAllBytes(Paths.get(file));
             try (AudioDecoder decoder = AudioDecoder.Companion.open(bytes)) {
                 int samples = 0;
@@ -32,16 +35,23 @@ public class ArtifactSmoke {
         }
 
         String current = UpdateChecker.INSTANCE.getCurrentVersion();
-        String target = UpdateChecker.INSTANCE.getTarget();
-        require("1.12.2".equals(target) && !current.isEmpty(), "Missing build metadata");
-        String next = "999.0-port.2";
+        require(target.equals(UpdateChecker.INSTANCE.getTarget()) && !current.isEmpty(), "Wrong build metadata");
+        checkUpdates("1.7.6-port.1", "1.7.6-port.2", target);
+        checkUpdates(current, "999.0-port.2", target);
+    }
+
+    private static void checkUpdates(String current, String next, String target) {
         String page = "https://github.com/wu-xiao-ya/DangoMusic/releases/tag/v" + next;
         String name = "DangoMusic-" + next + "+" + target + ".jar";
-        UpdateChecker.Release missing = new UpdateChecker.Release(next, page, Collections.emptyList());
-        require(UpdateChecker.infoFor(missing, current, target) == null, "Suggested release lacks a matching JAR");
-        String download = "https://github.com/wu-xiao-ya/DangoMusic/releases/download/v" + next + "/" + name;
+        String otherTarget = "1.7.10".equals(target) ? "1.12.2" : "1.7.10";
+        String otherName = "DangoMusic-" + next + "+" + otherTarget + ".jar";
+        String base = "https://github.com/wu-xiao-ya/DangoMusic/releases/download/v" + next + "/";
+        Pair<String, String> other = new Pair<>(otherName, base + otherName);
+        UpdateChecker.Release missing = new UpdateChecker.Release(next, page, Collections.singletonList(other));
+        require(UpdateChecker.infoFor(missing, current, target) == null, "Suggested another Minecraft version");
+        String download = base + name;
         UpdateChecker.Release release = new UpdateChecker.Release(next, page,
-                Collections.singletonList(new Pair<>(name, download)));
+                Arrays.asList(other, new Pair<>(name, download)));
         require(download.equals(UpdateChecker.infoFor(release, current, target).getDownload()), "Wrong update asset");
         require(UpdateChecker.infoFor(release, next, target) == null, "Suggested an already installed release");
         System.out.println("Verified release metadata and asset selection");

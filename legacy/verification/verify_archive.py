@@ -18,14 +18,15 @@ def check(ok, message):
 
 def verify(target, path):
     root = Path(__file__).resolve().parents[2]
-    port = target == "1.12.2"
+    check(target in {"1.7.10", "1.8.9", "1.12.2"}, f"unknown target: {target}")
+    port = target in {"1.7.10", "1.12.2"}
     version_file = root / ("legacy/forge112/gradle.properties" if port else "version.properties")
     version = properties(version_file.read_bytes())["portVersion" if port else "version"]
     check(path.name == f"DangoMusic-{version}+{target}.jar", "unexpected artifact filename")
     with ZipFile(path) as jar:
         check(jar.testzip() is None, "invalid jar checksum")
         names = set(jar.namelist())
-        lang = ["en_us", "zh_cn"] if port else ["en_US", "zh_CN"]
+        lang = ["en_us", "zh_cn"] if target == "1.12.2" else ["en_US", "zh_CN"]
         base = "me/sorihiko/dango/"
         required = {
             base + "forge/DangoMusicMod.class", base + "forge/PartyNetwork.class",
@@ -54,7 +55,7 @@ def verify(target, path):
             check(build["updateRepository"] == "wu-xiao-ya/DangoMusic", "incorrect update repository")
         check(properties(jar.read("version.properties"))["dangomusic.version"] == version, "wrong FML version")
         check(f"[{target}]".encode() in jar.read(base + "forge/DangoMusicMod.class"), "wrong @Mod target")
-        # Both legacy adapters call Minecraft.getMinecraft(). Production Forge expects its SRG name.
+        # Production Forge expects the SRG name of Minecraft.getMinecraft().
         check(any(b"func_71410_x" in jar.read(n) for n in names if n.startswith(base + "legacy/")
                   and n.endswith(".class")), "SRG Minecraft methods missing")
         for name in names:
@@ -62,7 +63,8 @@ def verify(target, path):
                 data = jar.read(name)
                 check(int.from_bytes(data[6:8], "big") <= 52, f"Java 8 cannot load {name}")
                 check(not name.startswith(("kotlin/", "javazoom/", "com/jcraft/", "com/google/zxing/",
-                                           "net/minecraft/", "net/minecraftforge/")), f"unexpected class: {name}")
+                                           "net/minecraft/", "net/minecraftforge/", "cpw/mods/fml/")),
+                      f"unexpected class: {name}")
     print(f"Verified {path.name}")
 
 
