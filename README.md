@@ -2,11 +2,19 @@
 
 <h1 align="center">Dango Music</h1>
 
-## Minecraft 1.7.10 与 1.12.2 · Forge 移植版
+## Forge 移植版 v1.7.6-port.2
 
-本分支由 wu-xiao-ya 维护，基于 Sorihiko 的 Dango Music `v1.7.6`。1.12.2 适配沿用 kochegarr 在上游 PR #32 的贡献。两个移植版本使用 GPL-3.0 许可证，当前版本为 `1.7.6-port.2`。[上游正式版](https://github.com/Sorihiko/DangoMusic/releases/tag/v1.7.6) · [原始适配贡献](https://github.com/Sorihiko/DangoMusic/pull/32)
+本分支由 wu-xiao-ya 维护，基于 Sorihiko 的 Dango Music `v1.7.6`，采用 GPL-3.0 许可证。Minecraft 1.12.2 移植沿用 kochegarr 的适配工作。[上游 v1.7.6](https://github.com/Sorihiko/DangoMusic/releases/tag/v1.7.6) · [原始适配 PR #32](https://github.com/Sorihiko/DangoMusic/pull/32)
 
-- **安装**。从移植版发行页下载文件名以 `+1.7.10.jar` 或 `+1.12.2.jar` 结尾的对应文件，放入客户端实例的 `mods` 目录，使用 Java 8 启动。在主菜单或游戏中按默认键 `M` 打开播放器。两个编译目标分别为 Forge `10.13.4.1614` 和 `14.23.5.2860`。[移植版发行页](https://github.com/wu-xiao-ya/DangoMusic/releases) · [移植版构建](https://github.com/wu-xiao-ya/DangoMusic/actions/workflows/legacy.yml)
+| Minecraft | 已实测的 Forge 版本 | 客户端下载（Java 8） |
+| --- | --- | --- |
+| 1.7.10 | 10.13.4.1558、10.13.4.1614 | [DangoMusic-1.7.6-port.2+1.7.10.jar](https://github.com/wu-xiao-ya/DangoMusic/releases/download/v1.7.6-port.2/DangoMusic-1.7.6-port.2%2B1.7.10.jar) |
+| 1.12.2 | 14.23.5.2860 | [DangoMusic-1.7.6-port.2+1.12.2.jar](https://github.com/wu-xiao-ya/DangoMusic/releases/download/v1.7.6-port.2/DangoMusic-1.7.6-port.2%2B1.12.2.jar) |
+
+下载与游戏版本对应的 JAR，放入客户端实例的 `mods` 目录。1.12.2 用户从 `port.1` 升级时请替换旧 JAR。用 Java 8 启动后，在主菜单或存档内按 `M` 打开播放器。
+
+本次新增 1.7.10 支持，更新了 1.12.2 移植包，并修复暂停后拖动进度、立即恢复播放时偶尔仍停在暂停状态的问题。[移植版发布说明](https://github.com/wu-xiao-ya/DangoMusic/releases/tag/v1.7.6-port.2) · [验证记录](https://github.com/wu-xiao-ya/DangoMusic/releases/download/v1.7.6-port.2/forge-port.2-verification.md) · [SHA-256 校验值](https://github.com/wu-xiao-ya/DangoMusic/releases/download/v1.7.6-port.2/SHA256SUMS.txt)
+
 - **一起听**。同一局域网存档内，房主和参加者安装模组后即可直连。跨存档或跨游戏版本时，每位参加者可将仓库中的 `firebase.properties.example` 复制到各自实例的 `config/dangomusic/firebase.properties`，填入同一项目的 `apiKey` 和 `databaseUrl`，再重启游戏。Firebase 项目需要开启匿名登录、Realtime Database 并应用仓库中的数据库规则。普通专服玩家可以只在客户端安装。
 - **从源码构建**。构建 1.7.10 时安装 JDK 17 和 JDK 8，用 JDK 17 在 `legacy/forge1710` 启动 Gradle。构建 1.12.2 时用 JDK 8 在 `legacy/forge112` 启动 Gradle。命令均为 `gradlew.bat clean build`（Linux/macOS 使用 `./gradlew clean build`），在对应目录的 `build/libs` 获取带游戏版本后缀的成品。
 
@@ -15,7 +23,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Sorihiko/DangoMusic?style=for-the-badge&label=license&labelColor=555555&color=FF5C8A" alt="License"></a>
   <a href="https://github.com/Sorihiko/DangoMusic/stargazers"><img src="https://img.shields.io/github/stars/Sorihiko/DangoMusic?style=for-the-badge&label=stars&labelColor=555555&color=FF5C8A" alt="Stars"></a>
-  <a href="https://github.com/Sorihiko/DangoMusic/releases"><img src="https://img.shields.io/github/v/release/Sorihiko/DangoMusic?style=for-the-badge&label=dango&labelColor=555555&color=FF5C8A" alt="Version"></a>
+  <a href="https://github.com/wu-xiao-ya/DangoMusic/releases"><img src="https://img.shields.io/github/v/release/wu-xiao-ya/DangoMusic?style=for-the-badge&label=Forge%20port&labelColor=555555&color=FF5C8A" alt="Forge 移植版版本"></a>
 </p>
 
 在 Minecraft 里听网易云音乐 / QQ 音乐 / 酷狗的 mod：液态玻璃播放器、漂浮在世界里的 3D 歌词、Song card、灵动岛，还能和朋友一起听歌。
@@ -36,30 +44,23 @@
 - **一起听歌**：分享房间码，所有人同步到同一首歌、同一秒；局域网 / 内网穿透联机时直接经房主的游戏同步，不用 Firebase、不用代理；不在同一个服务器、不是同一个 MC 版本也能经 Firebase 一起听
 - 设置都在播放器侧栏的 ⚙ 里，可以绑定快捷键
 
-更新内容见 [1.7.6 更新日志](docs/CHANGELOG-1.7.6.md)。
+## 上游版本
 
-## 安装
+Sorihiko 的 `v1.7.6` 为下列游戏版本提供 JAR。按游戏版本和加载器选择文件，使用 Fabric 时另需安装对应版本的 Fabric API。[上游 v1.7.6 下载](https://github.com/Sorihiko/DangoMusic/releases/tag/v1.7.6) · [上游更新日志](docs/CHANGELOG-1.7.6.md) · [Fabric API](https://modrinth.com/mod/fabric-api)
 
-1.7.10 与 1.12.2 从本仓库的移植版发行页下载，以下其他版本从上游发行页下载。将对应 JAR 放进 `.minecraft/mods`，进游戏按 `M`。[移植版发行页](https://github.com/wu-xiao-ya/DangoMusic/releases) · [上游发行页](https://github.com/Sorihiko/DangoMusic/releases)
+| Minecraft | 加载器 |
+| --- | --- |
+| 1.8.9 | Forge 11.15.1.2318 |
+| 1.20.1 | Fabric、Forge 47.x |
+| 1.21.1、1.21.10、1.21.11 | Fabric、NeoForge |
+| 26.1、26.1.1、26.1.2 | Fabric、NeoForge（这三个版本共用文件名含 `26.1.2` 的对应加载器 JAR） |
+| 26.2、26.3 | Fabric、NeoForge |
 
-| Minecraft | Fabric（另需 [Fabric API](https://modrinth.com/mod/fabric-api)） | Forge / NeoForge |
-|---|---|---|
-| 1.7.10 | — | `+1.7.10.jar`（Forge 10.13.4.1614） |
-| 1.8.9 | — | `+1.8.9.jar`（Forge 11.15.1.2318，或 Lunar 等客户端） |
-| 1.12.2 | — | `+1.12.2.jar`（Forge 14.23.5.2860） |
-| 1.20.1 | `+1.20.1-fabric.jar` | `+1.20.1-forge.jar`（Forge 47.x） |
-| 1.21.1 | `+1.21.1-fabric.jar` | `+1.21.1-neoforge.jar` |
-| 1.21.10 | `+1.21.10-fabric.jar` | `+1.21.10-neoforge.jar` |
-| 1.21.11 | `+1.21.11-fabric.jar` | `+1.21.11-neoforge.jar` |
-| 26.1 / 26.1.1 / 26.1.2 | `+26.1.2-fabric.jar` | `+26.1.2-neoforge.jar` |
-| 26.2 | `+26.2-fabric.jar` | `+26.2-neoforge.jar` |
-| 26.3 | `+26.3-fabric.jar` | `+26.3-neoforge.jar` |
+26.2 和 26.3 支持 Vulkan，3D 歌词会显示在手部画面上方。配置和登录信息保存在客户端实例的 `config/dangomusic/` 目录。
 
-26.2 / 26.3 选 Vulkan 时也能正常显示（3D 歌词会盖在手上）。配置和登录信息存在 `.minecraft/config/dangomusic/`。
+## 构建全部版本
 
-## 构建
-
-需要 JDK 8、21、25，运行 `build-all.bat`，jar 收集到 `dist/`（JDK 不在默认位置时设置 `DANGO_JDK21` / `DANGO_JDK25`）。
+需要 JDK 8、17、21、25，运行 `build-all.bat`，jar 收集到 `dist/`（JDK 不在默认位置时设置对应的 `DANGO_JDK17`、`DANGO_JDK21` 或 `DANGO_JDK25`）。
 
 <details>
 <summary>启用一起听歌（Firebase）</summary>
