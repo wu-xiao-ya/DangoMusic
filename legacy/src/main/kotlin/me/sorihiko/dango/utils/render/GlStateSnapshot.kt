@@ -1,6 +1,6 @@
 package me.sorihiko.dango.utils.render
 
-import net.minecraft.client.renderer.GlStateManager
+import me.sorihiko.dango.legacy.GlStateManager
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL13

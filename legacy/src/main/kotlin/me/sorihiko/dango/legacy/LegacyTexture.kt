@@ -3,7 +3,6 @@ package me.sorihiko.dango.legacy
 import me.sorihiko.dango.gfx.Texture
 import me.sorihiko.dango.gfx.Textures
 
-import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.util.ResourceLocation
 

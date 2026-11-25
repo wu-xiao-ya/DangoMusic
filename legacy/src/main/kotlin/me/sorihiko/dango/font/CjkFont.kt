@@ -3,11 +3,9 @@ package me.sorihiko.dango.font
 import me.sorihiko.dango.DangoLogger
 
 import org.lwjgl.BufferUtils
-import org.lwjgl.opengl.EXTFramebufferObject
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
-import org.lwjgl.opengl.GL30
-import org.lwjgl.opengl.GLContext
+import me.sorihiko.dango.utils.render.LegacyFramebuffer
 
 import java.awt.Color
 import java.awt.Font
@@ -242,15 +240,9 @@ object CjkFont {
 
     // ---------------------------------------------------------------- 贴图
 
-    private val canMipmap: Boolean by lazy {
-        val caps = GLContext.getCapabilities()
-        caps.OpenGL30 || caps.GL_EXT_framebuffer_object
-    }
+    private val canMipmap get() = LegacyFramebuffer.supported
 
-    private fun genMipmap() {
-        if (GLContext.getCapabilities().OpenGL30) GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D)
-        else EXTFramebufferObject.glGenerateMipmapEXT(GL11.GL_TEXTURE_2D)
-    }
+    private fun genMipmap() = LegacyFramebuffer.generateMipmap()
 
     private fun newPage() {
         val prev = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D)

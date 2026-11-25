@@ -27,8 +27,8 @@ class RenderTarget(
         this.width = width
         this.height = height
 
-        fbo = GL30.glGenFramebuffers()
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
+        fbo = LegacyFramebuffer.glGenFramebuffers()
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
 
         if (color) {
             framebufferTexture = GL11.glGenTextures()
@@ -57,7 +57,7 @@ class RenderTarget(
                 GL11.GL_NEAREST
             )
 
-            GL30.glFramebufferTexture2D(
+            LegacyFramebuffer.glFramebufferTexture2D(
                 GL30.GL_FRAMEBUFFER,
                 GL30.GL_COLOR_ATTACHMENT0,
                 GL11.GL_TEXTURE_2D,
@@ -94,7 +94,7 @@ class RenderTarget(
                 GL11.GL_NEAREST
             )
 
-            GL30.glFramebufferTexture2D(
+            LegacyFramebuffer.glFramebufferTexture2D(
                 GL30.GL_FRAMEBUFFER,
                 GL30.GL_DEPTH_ATTACHMENT,
                 GL11.GL_TEXTURE_2D,
@@ -103,18 +103,18 @@ class RenderTarget(
             )
         }
 
-        val status = GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER)
+        val status = LegacyFramebuffer.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER)
         if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
             throw RuntimeException("Framebuffer create failed: $status")
         }
 
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0)
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0)
     }
 
     fun delete() {
         if (fbo != -1) {
-            GL30.glDeleteFramebuffers(fbo)
+            LegacyFramebuffer.glDeleteFramebuffers(fbo)
             fbo = -1
         }
 
@@ -130,7 +130,7 @@ class RenderTarget(
     }
 
     fun bind(review: Boolean = false) {
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
 
         if (review) {
             GL11.glViewport(0, 0, width, height)

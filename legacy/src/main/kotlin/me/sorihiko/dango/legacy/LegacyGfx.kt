@@ -16,8 +16,6 @@ import me.sorihiko.dango.utils.render.GlCaps
 import me.sorihiko.dango.utils.render.GlStateSnapshot
 
 import net.minecraft.client.gui.Gui
-import net.minecraft.client.gui.ScaledResolution
-import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.client.renderer.OpenGlHelper
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL13
@@ -164,7 +162,7 @@ object LegacyText : TextCanvas {
     override fun endSmooth() = LegacyGfx.resetColorAndTexture()
 
     override fun pixelText(text: String, x: Float, y: Float, argb: Int, shadow: Boolean) {
-        legacyFontRenderer.drawString(text, x, y, argb, shadow)
+        drawLegacyString(text, x, y, argb, shadow)
     }
 
     override fun pixelWidth(text: String): Float = legacyFontRenderer.getStringWidth(text).toFloat()
@@ -214,9 +212,9 @@ object LegacyText : TextCanvas {
 // ---------------------------------------------------------------- 世界里的歌词
 
 object LegacyWorld : WorldView {
-    override val cameraX: Double get() = mc.renderManager.viewerPosX
-    override val cameraY: Double get() = mc.renderManager.viewerPosY
-    override val cameraZ: Double get() = mc.renderManager.viewerPosZ
+    override val cameraX: Double get() = legacyRenderManager.viewerPosX
+    override val cameraY: Double get() = legacyRenderManager.viewerPosY
+    override val cameraZ: Double get() = legacyRenderManager.viewerPosZ
 
     private val viewMatrix = org.lwjgl.BufferUtils.createFloatBuffer(16)
 
@@ -226,7 +224,7 @@ object LegacyWorld : WorldView {
         GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, viewMatrix)
         return me.sorihiko.dango.gfx.ViewAngles.fromViewBack(
             viewMatrix.get(2).toDouble(), viewMatrix.get(6).toDouble(), viewMatrix.get(10).toDouble(),
-        ) ?: me.sorihiko.dango.gfx.ViewAngles(mc.renderManager.playerViewY, mc.renderManager.playerViewX)
+        ) ?: me.sorihiko.dango.gfx.ViewAngles(legacyRenderManager.playerViewY, legacyRenderManager.playerViewX)
     }
 
     override fun begin() {
@@ -257,7 +255,7 @@ object LegacyWorld : WorldView {
 
 object LegacyHud : HudCanvas {
     override fun begin() {
-        val sr = ScaledResolution(mc)
+        val sr = legacyResolution()
         GL11.glMatrixMode(GL11.GL_PROJECTION)
         GL11.glPushMatrix()
         GL11.glLoadIdentity()
@@ -294,6 +292,6 @@ object LegacyHud : HudCanvas {
         // Gui.drawRect 画完会关掉混合，文字前重新打开
         GlStateManager.enableTexture2D()
         GlStateManager.enableBlend()
-        legacyFontRenderer.drawString(text, x, y, argb, shadow)
+        drawLegacyString(text, x, y, argb, shadow)
     }
 }

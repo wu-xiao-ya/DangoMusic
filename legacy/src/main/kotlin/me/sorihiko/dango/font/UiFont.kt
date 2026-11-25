@@ -3,7 +3,7 @@ package me.sorihiko.dango.font
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
-import org.lwjgl.opengl.GL30
+import me.sorihiko.dango.utils.render.LegacyFramebuffer
 
 import java.awt.Color
 import java.awt.Font
@@ -166,8 +166,11 @@ class UiFont(
             data
         )
         // 图集是 64px，UI 常以 11~16px 绘制，用 mipmap 避免缩小时的锯齿和闪烁
-        GL30.glGenerateMipmap(GL11.GL_TEXTURE_2D)
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR_MIPMAP_LINEAR)
+        val minFilter = if (LegacyFramebuffer.supported) {
+            LegacyFramebuffer.generateMipmap()
+            GL11.GL_LINEAR_MIPMAP_LINEAR
+        } else GL11.GL_LINEAR
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, minFilter)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE)
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE)

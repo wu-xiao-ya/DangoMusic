@@ -44,9 +44,9 @@ class LegacyMusicScreen(
     override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
         val menuBackdrop = !hasClientWorld && parent is GuiMainMenu
         if (menuBackdrop) {
-            net.minecraft.client.renderer.GlStateManager.disableAlpha()
+            GlStateManager.disableAlpha()
             panoramaMethod.invoke(parent, mouseX, mouseY, partialTicks)
-            net.minecraft.client.renderer.GlStateManager.enableAlpha()
+            GlStateManager.enableAlpha()
             // 与 GuiMainMenu 的两层渐变一致，避免开关时背景亮度变化。
             drawGradientRect(0, 0, width, height, -2130706433, 16777215)
             drawGradientRect(0, 0, width, height, 0, Int.MIN_VALUE)

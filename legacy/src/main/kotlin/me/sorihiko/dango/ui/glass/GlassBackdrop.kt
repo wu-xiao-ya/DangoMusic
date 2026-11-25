@@ -11,6 +11,7 @@ import org.lwjgl.opengl.GL12
 import org.lwjgl.opengl.GL13
 import org.lwjgl.opengl.GL20
 import org.lwjgl.opengl.GL30
+import me.sorihiko.dango.utils.render.LegacyFramebuffer
 
 import java.nio.ByteBuffer
 
@@ -43,7 +44,10 @@ class GlassBackdrop {
     fun capture() {
         val w = mc.displayWidth
         val h = mc.displayHeight
-        if (w <= 0 || h <= 0) return
+        if (w <= 0 || h <= 0 || !LegacyFramebuffer.supported) {
+            ready = false
+            return
+        }
 
         val previousFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING)
         GL11.glPushAttrib(
@@ -54,7 +58,7 @@ class GlassBackdrop {
             if (w != width || h != height || captureTexture == -1) resize(w, h)
 
             // resize 创建模糊目标时会改变绑定，恢复后再截取原画面。
-            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo)
+            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo)
 
             GL13.glActiveTexture(GL13.GL_TEXTURE0)
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, captureTexture)
@@ -78,7 +82,7 @@ class GlassBackdrop {
             ready = true
         } finally {
             GL20.glUseProgram(0)
-            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo)
+            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo)
             GL11.glPopAttrib()
         }
     }
@@ -160,24 +164,24 @@ class GlassTarget {
         height = nh
 
         texture = createTexture(nw, nh)
-        fbo = GL30.glGenFramebuffers()
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
-        GL30.glFramebufferTexture2D(
+        fbo = LegacyFramebuffer.glGenFramebuffers()
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
+        LegacyFramebuffer.glFramebufferTexture2D(
             GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, texture, 0
         )
-        val status = GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER)
+        val status = LegacyFramebuffer.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER)
         if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
             throw RuntimeException("Glass framebuffer create failed: $status")
         }
     }
 
     fun bind() {
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
         GL11.glViewport(0, 0, width, height)
     }
 
     fun delete() {
-        if (fbo != -1) GL30.glDeleteFramebuffers(fbo)
+        if (fbo != -1) LegacyFramebuffer.glDeleteFramebuffers(fbo)
         if (texture != -1) GL11.glDeleteTextures(texture)
         fbo = -1
         texture = -1

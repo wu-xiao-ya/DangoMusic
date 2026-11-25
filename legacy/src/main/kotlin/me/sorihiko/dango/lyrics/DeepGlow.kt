@@ -6,6 +6,8 @@ import me.sorihiko.dango.legacy.mc
 import me.sorihiko.dango.utils.render.GlCaps
 
 import net.minecraft.client.renderer.OpenGlHelper
+import org.lwjgl.opengl.GL30
+import me.sorihiko.dango.utils.render.LegacyFramebuffer
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
@@ -190,18 +192,18 @@ void main() {
     }
 
     private fun newFbo(tex: Int): Int {
-        val fbo = OpenGlHelper.glGenFramebuffers()
-        OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, fbo)
-        OpenGlHelper.glFramebufferTexture2D(OpenGlHelper.GL_FRAMEBUFFER, OpenGlHelper.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0)
+        val fbo = LegacyFramebuffer.glGenFramebuffers()
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo)
+        LegacyFramebuffer.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, tex, 0)
         return fbo
     }
 
     private fun release() {
         if (maskTex != 0) GL11.glDeleteTextures(maskTex)
-        if (maskFbo != 0) OpenGlHelper.glDeleteFramebuffers(maskFbo)
+        if (maskFbo != 0) LegacyFramebuffer.glDeleteFramebuffers(maskFbo)
         for (i in 0 until LEVELS) {
             if (levelTex[i] != 0) GL11.glDeleteTextures(levelTex[i])
-            if (levelFbo[i] != 0) OpenGlHelper.glDeleteFramebuffers(levelFbo[i])
+            if (levelFbo[i] != 0) LegacyFramebuffer.glDeleteFramebuffers(levelFbo[i])
             levelTex[i] = 0
             levelFbo[i] = 0
         }
@@ -232,7 +234,7 @@ void main() {
 
     /** 开始往发光画布上画。返回 false 表示用不了（着色器编译失败等），这时直接跳过发光 */
     override fun begin(): Boolean {
-        if (!OpenGlHelper.isFramebufferEnabled() || !ensurePrograms()) return false
+        if (!LegacyFramebuffer.supported || !OpenGlHelper.isFramebufferEnabled() || !ensurePrograms()) return false
         val w = mc.displayWidth
         val h = mc.displayHeight
         if (w <= 0 || h <= 0) return false
@@ -245,7 +247,7 @@ void main() {
         ensureTargets(w, h)
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTex)
 
-        OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, maskFbo)
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, maskFbo)
         GL11.glViewport(0, 0, w, h)
         // 清空画布要临时把清屏颜色设成透明黑，清完马上改回去：
         // MC 每帧开头用这个颜色（天空 / 雾的颜色）清屏，它自己缓存着值，不改回去的话远处会露出一圈黑色
@@ -295,7 +297,7 @@ void main() {
         var srcW = width
         var srcH = height
         for (i in 0 until LEVELS) {
-            OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, levelFbo[i])
+            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, levelFbo[i])
             GL11.glViewport(0, 0, levelW[i], levelH[i])
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, srcTex)
             GL20.glUniform2f(texelDown, 1f / srcW, 1f / srcH)
@@ -313,7 +315,7 @@ void main() {
         val texelUp = GL20.glGetUniformLocation(progUp, "texel")
         GL20.glUniform1f(GL20.glGetUniformLocation(progUp, "intensity"), 0.55f + spread.coerceIn(0f, 1f) * 0.6f)
         for (i in LEVELS - 2 downTo 0) {
-            OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, levelFbo[i])
+            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, levelFbo[i])
             GL11.glViewport(0, 0, levelW[i], levelH[i])
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, levelTex[i + 1])
             GL20.glUniform2f(texelUp, 1f / levelW[i + 1], 1f / levelH[i + 1])
@@ -321,7 +323,7 @@ void main() {
         }
 
         // 合成到原来的画面上（加法混合）
-        OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, savedFbo)
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, savedFbo)
         GL11.glViewport(savedViewport.get(0), savedViewport.get(1), savedViewport.get(2), savedViewport.get(3))
         GL20.glUseProgram(progComp)
         GL20.glUniform1i(GL20.glGetUniformLocation(progComp, "tex"), 0)
@@ -345,7 +347,7 @@ void main() {
     fun abort() {
         if (!active) return
         active = false
-        OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, savedFbo)
+        LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, savedFbo)
         GL11.glViewport(savedViewport.get(0), savedViewport.get(1), savedViewport.get(2), savedViewport.get(3))
     }
 

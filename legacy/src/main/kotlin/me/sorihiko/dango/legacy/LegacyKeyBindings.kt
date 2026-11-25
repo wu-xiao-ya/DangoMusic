@@ -5,7 +5,6 @@ import me.sorihiko.dango.platform.PlayerAction
 import me.sorihiko.dango.platform.PlayerKeyBinding
 import me.sorihiko.dango.platform.savedPlayerKeys
 import net.minecraft.client.settings.KeyBinding
-import net.minecraftforge.fml.client.registry.ClientRegistry
 
 /** saveOptions() 会把所有按键（包括其他模组的）写回 options.txt，所以只在我们的按键真的变了时才保存（issue #18） */
 object LegacyKeyBindings {
@@ -18,7 +17,7 @@ object LegacyKeyBindings {
     @JvmStatic
     fun register() {
         if (registered) return
-        mappings.values.forEach { ClientRegistry.registerKeyBinding(it) }
+        mappings.values.forEach { registerLegacyKeyBinding(it) }
         registered = true
     }
 
