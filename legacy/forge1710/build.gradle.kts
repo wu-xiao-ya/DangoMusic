@@ -23,6 +23,10 @@ minecraft { mcVersion.set(minecraftVersion) }
 val shade by configurations.creating {
     isCanBeResolved = true
     isCanBeConsumed = false
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
+        attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements.JAR))
+    }
 }
 configurations.implementation.get().extendsFrom(shade)
 dependencies {

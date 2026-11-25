@@ -2,13 +2,13 @@
 
 <h1 align="center">Dango Music</h1>
 
-## Minecraft 1.12.2 · Forge 移植版
+## Minecraft 1.7.10 与 1.12.2 · Forge 移植版
 
-本分支由 wu-xiao-ya 维护，基于 Sorihiko 的 Dango Music `v1.7.6`，沿用 kochegarr 在上游 PR #32 中验证的 Forge 1.12.2 接口适配。移植版本为 `1.7.6-port.1`，修改日期为 2026-11-25，许可证为 GPL-3.0。[上游正式版](https://github.com/Sorihiko/DangoMusic/releases/tag/v1.7.6) · [原始适配贡献](https://github.com/Sorihiko/DangoMusic/pull/32)
+本分支由 wu-xiao-ya 维护，基于 Sorihiko 的 Dango Music `v1.7.6`。1.12.2 适配沿用 kochegarr 在上游 PR #32 的贡献。两个移植版本使用 GPL-3.0 许可证，当前版本为 `1.7.6-port.2`。[上游正式版](https://github.com/Sorihiko/DangoMusic/releases/tag/v1.7.6) · [原始适配贡献](https://github.com/Sorihiko/DangoMusic/pull/32)
 
-- **安装**。将 `DangoMusic-1.7.6-port.1+1.12.2.jar` 放入 Forge 1.12.2 客户端实例的 `mods` 目录，使用 Java 8 启动。在主菜单或游戏中按默认键 `M` 打开播放器。编译目标为 Forge `14.23.5.2860`。[移植版构建](https://github.com/wu-xiao-ya/DangoMusic/actions/workflows/legacy.yml) · [移植版发行页](https://github.com/wu-xiao-ya/DangoMusic/releases)
+- **安装**。从移植版发行页下载文件名以 `+1.7.10.jar` 或 `+1.12.2.jar` 结尾的对应文件，放入客户端实例的 `mods` 目录，使用 Java 8 启动。在主菜单或游戏中按默认键 `M` 打开播放器。两个编译目标分别为 Forge `10.13.4.1614` 和 `14.23.5.2860`。[移植版发行页](https://github.com/wu-xiao-ya/DangoMusic/releases) · [移植版构建](https://github.com/wu-xiao-ya/DangoMusic/actions/workflows/legacy.yml)
 - **一起听**。同一局域网存档内，房主和参加者安装模组后即可直连。跨存档或跨游戏版本时，每位参加者可将仓库中的 `firebase.properties.example` 复制到各自实例的 `config/dangomusic/firebase.properties`，填入同一项目的 `apiKey` 和 `databaseUrl`，再重启游戏。Firebase 项目需要开启匿名登录、Realtime Database 并应用仓库中的数据库规则。普通专服玩家可以只在客户端安装。
-- **从源码构建**。使用 JDK 8，在 `legacy/forge112` 下运行 `gradlew.bat clean build`（Linux/macOS 使用 `./gradlew clean build`），从该目录的 `build/libs` 取带 `+1.12.2.jar` 的成品。旧版 Forge 共用播放器、平台接口以外的界面代码、字体和资源。
+- **从源码构建**。构建 1.7.10 时安装 JDK 17 和 JDK 8，用 JDK 17 在 `legacy/forge1710` 启动 Gradle。构建 1.12.2 时用 JDK 8 在 `legacy/forge112` 启动 Gradle。命令均为 `gradlew.bat clean build`（Linux/macOS 使用 `./gradlew clean build`），在对应目录的 `build/libs` 获取带游戏版本后缀的成品。
 
 <p align="center"><em>A Minecraft mod that brings NetEase Cloud Music, QQ Music and Kugou into the game: liquid-glass player, 3D in-world lyrics, song card HUD, Dynamic Island and Listen Together.</em></p>
 
@@ -40,11 +40,13 @@
 
 ## 安装
 
-在 [Releases](https://github.com/Sorihiko/DangoMusic/releases) 下载对应版本的 jar，放进 `.minecraft/mods`，进游戏按 `M`。
+1.7.10 与 1.12.2 从本仓库的移植版发行页下载，以下其他版本从上游发行页下载。将对应 JAR 放进 `.minecraft/mods`，进游戏按 `M`。[移植版发行页](https://github.com/wu-xiao-ya/DangoMusic/releases) · [上游发行页](https://github.com/Sorihiko/DangoMusic/releases)
 
 | Minecraft | Fabric（另需 [Fabric API](https://modrinth.com/mod/fabric-api)） | Forge / NeoForge |
 |---|---|---|
+| 1.7.10 | — | `+1.7.10.jar`（Forge 10.13.4.1614） |
 | 1.8.9 | — | `+1.8.9.jar`（Forge 11.15.1.2318，或 Lunar 等客户端） |
+| 1.12.2 | — | `+1.12.2.jar`（Forge 14.23.5.2860） |
 | 1.20.1 | `+1.20.1-fabric.jar` | `+1.20.1-forge.jar`（Forge 47.x） |
 | 1.21.1 | `+1.21.1-fabric.jar` | `+1.21.1-neoforge.jar` |
 | 1.21.10 | `+1.21.10-fabric.jar` | `+1.21.10-neoforge.jar` |
