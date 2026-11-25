@@ -18,7 +18,12 @@ val minecraftVersion = "1.7.10"
 group = "me.sorihiko.dango"
 version = portVersion
 repositories { mavenCentral() }
-minecraft { mcVersion.set(minecraftVersion) }
+minecraft {
+    mcVersion.set(minecraftVersion)
+    useForgeEmbeddedMappings.set(false)
+    mcpMappingChannel.set("stable")
+    mcpMappingVersion.set("12")
+}
 
 val shade by configurations.creating {
     isCanBeResolved = true

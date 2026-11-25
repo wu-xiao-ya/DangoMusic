@@ -4,7 +4,7 @@ import me.sorihiko.dango.legacy.LegacyGl
 import me.sorihiko.dango.legacy.mc
 import me.sorihiko.dango.shader.impls.QuadShader
 import me.sorihiko.dango.shader.impls.ui.GlassBlurShader
-import me.sorihiko.dango.utils.render.RenderTarget
+import net.minecraft.client.renderer.OpenGlHelper
 
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
@@ -44,7 +44,7 @@ class GlassBackdrop {
     fun capture() {
         val w = mc.displayWidth
         val h = mc.displayHeight
-        if (w <= 0 || h <= 0 || !LegacyFramebuffer.supported) {
+        if (w <= 0 || h <= 0 || !LegacyFramebuffer.supported || !OpenGlHelper.isFramebufferEnabled()) {
             ready = false
             return
         }

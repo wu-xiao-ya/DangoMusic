@@ -97,6 +97,14 @@ object LegacyPlatform : Platform {
         }
     }
 
+    private const val d = 0.57735
+    private val acousticDirections = arrayOf(
+        doubleArrayOf(1.0, 0.0, 0.0), doubleArrayOf(-1.0, 0.0, 0.0), doubleArrayOf(0.0, 1.0, 0.0),
+        doubleArrayOf(0.0, -1.0, 0.0), doubleArrayOf(0.0, 0.0, 1.0), doubleArrayOf(0.0, 0.0, -1.0),
+        doubleArrayOf(d, d, d), doubleArrayOf(d, d, -d), doubleArrayOf(-d, d, d), doubleArrayOf(-d, d, -d),
+        doubleArrayOf(d, -d, d), doubleArrayOf(d, -d, -d), doubleArrayOf(-d, -d, d), doubleArrayOf(-d, -d, -d),
+    )
+
     override val environment: me.sorihiko.dango.platform.ListenerEnvironment?
         get() {
             val p = mc.thePlayer ?: return null
@@ -107,14 +115,7 @@ object LegacyPlatform : Platform {
             val eyeZ = MathHelper.floor_double(p.posZ)
             // 闭塞程度：往 14 个方向各看 6 格，碰到实心方块（不算空气和液体）的比例
             var hits = 0
-            val d = 0.57735
-            val dirs = arrayOf(
-                doubleArrayOf(1.0, 0.0, 0.0), doubleArrayOf(-1.0, 0.0, 0.0), doubleArrayOf(0.0, 1.0, 0.0),
-                doubleArrayOf(0.0, -1.0, 0.0), doubleArrayOf(0.0, 0.0, 1.0), doubleArrayOf(0.0, 0.0, -1.0),
-                doubleArrayOf(d, d, d), doubleArrayOf(d, d, -d), doubleArrayOf(-d, d, d), doubleArrayOf(-d, d, -d),
-                doubleArrayOf(d, -d, d), doubleArrayOf(d, -d, -d), doubleArrayOf(-d, -d, d), doubleArrayOf(-d, -d, -d),
-            )
-            for (dir in dirs) {
+            for (dir in acousticDirections) {
                 for (step in 1..6) {
                     val x = MathHelper.floor_double(p.posX + dir[0] * step)
                     val y = MathHelper.floor_double(eyeY + dir[1] * step)
@@ -132,7 +133,7 @@ object LegacyPlatform : Platform {
                 else -> 0.5f
             }
             return me.sorihiko.dango.platform.ListenerEnvironment(
-                p.isInsideOfMaterial(net.minecraft.block.material.Material.water), world.canBlockSeeTheSky(eyeX, blockY, eyeZ), hits / dirs.size.toFloat(), rain)
+                p.isInsideOfMaterial(net.minecraft.block.material.Material.water), world.canBlockSeeTheSky(eyeX, blockY, eyeZ), hits / acousticDirections.size.toFloat(), rain)
         }
 
     override val player: PlayerPose?

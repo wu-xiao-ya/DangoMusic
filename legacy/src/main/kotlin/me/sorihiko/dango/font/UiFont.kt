@@ -3,6 +3,7 @@ package me.sorihiko.dango.font
 import org.lwjgl.BufferUtils
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
+import org.lwjgl.opengl.GLContext
 import me.sorihiko.dango.utils.render.LegacyFramebuffer
 
 import java.awt.Color
@@ -154,14 +155,16 @@ class UiFont(
     private fun genAtlasTexture(atlasW: Int, data: ByteBuffer): Int {
         val id = GL11.glGenTextures()
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, id)
+        val caps = GLContext.getCapabilities()
+        val channel = if (caps.OpenGL30 || caps.GL_ARB_texture_rg) GL11.GL_RED else GL11.GL_LUMINANCE
         GL11.glTexImage2D(
             GL11.GL_TEXTURE_2D,
             0,
-            GL11.GL_RED,
+            channel,
             atlasW,
             atlasW,
             0,
-            GL11.GL_RED,
+            channel,
             GL11.GL_UNSIGNED_BYTE,
             data
         )
