@@ -58,6 +58,7 @@ object MusicPlayer {
     @Volatile private var generation = 0
     @Volatile private var audio: ByteArray? = null
     @Volatile private var line: AudioOutput? = null
+    private var decodingGeneration: Int? = null
     @Volatile private var seekBaseMs = 0L
     @Volatile private var pausedAtMs = 0L
 
@@ -115,7 +116,7 @@ object MusicPlayer {
 
     val positionMs: Long
         get() = when (state) {
-            State.PLAYING -> { val us = line?.positionMicros ?: 0L; songAt(us) ?: (seekBaseMs + us / 1000) }
+            State.PLAYING -> line?.positionMicros?.let { songAt(it) ?: (seekBaseMs + it / 1000) } ?: seekBaseMs
             State.PAUSED -> pausedAtMs
             else -> 0L
         }
@@ -328,7 +329,7 @@ object MusicPlayer {
         return r
     }
 
-    fun togglePause() {
+    @Synchronized fun togglePause() {
         if (external) return SystemMedia.togglePause()
         if (lockedByHost()) return
         // 一起听的成员：本地先生效，再告诉房主
@@ -344,11 +345,11 @@ object MusicPlayer {
             }
             State.PAUSED -> {
                 val l = line
+                state = State.PLAYING
                 if (l != null) {
-                    // 声卡输出只是停住了，接着放就行；解码线程看到状态变回 PLAYING 会继续写数据
-                    state = State.PLAYING
                     l.start()
-                } else {
+                } else if (decodingGeneration != generation) {
+                    // 播至末尾时解码器已经退出；拖动期间仍在准备的解码器会自行接着播放。
                     seekLocal(pausedAtMs)
                 }
             }
@@ -513,9 +514,23 @@ object MusicPlayer {
             return null
         }
         if (out == null) out = openOutput(format, rate * channels * 2 / 4)
-        line = out
-        if (state == State.PAUSED) out.stop() else out.start()
+        if (!attachOutput(gen, out)) {
+            out.close()
+            return null
+        }
         return out
+    }
+
+    @Synchronized private fun attachOutput(gen: Int, out: AudioOutput): Boolean {
+        if (gen != generation) return false
+        line = out
+        if (state == State.PAUSED) {
+            out.stop()
+        } else {
+            out.start()
+            state = State.PLAYING
+        }
+        return true
     }
 
     private fun platformOutput(format: AudioFormat): AudioOutput? = try {
@@ -575,7 +590,10 @@ object MusicPlayer {
         return gain.coerceIn(0.25f, 2f)
     }
 
-    private fun startDecode(gen: Int, bytes: ByteArray, startMs: Long) {
+    @Synchronized private fun startDecode(gen: Int, bytes: ByteArray, startMs: Long) {
+        if (gen != generation) return
+        decodingGeneration = gen
+        seekBaseMs = startMs
         Thread({ decodeLoop(gen, bytes, startMs) }, "Dango-MusicDecode").apply {
             isDaemon = true
             start()
@@ -592,10 +610,13 @@ object MusicPlayer {
             source = decoder
             val skipped = started.skippedMs
             val first = started.first
-            if (gen != generation) return
-            seekBaseMs = skipped.toLong()
-            clearBeats()
-            EnvironmentAudio.reset()
+            synchronized(this) {
+                if (gen != generation) return
+                seekBaseMs = skipped.toLong()
+                clearBeats()
+                clearAnchors()
+                EnvironmentAudio.reset()
+            }
             var decodedMs = skipped
             // 变速变调：写进声卡的每一块都记一笔"声卡时间 ↔ 歌曲时间"，进度按它算
             val trackKey = current?.key
@@ -603,7 +624,6 @@ object MusicPlayer {
             var equalizer: Equalizer? = null
             var outUs = 0L
             var songOutMs = skipped.toDouble()
-            clearAnchors()
             var lowPass = 0f
             var avgEnergy = 0f
             var lastBeatMs = -1000f
@@ -620,19 +640,15 @@ object MusicPlayer {
                 if (out == null) {
                     val format = AudioFormat(frame.rate.toFloat(), 16, frame.channels, true, false)
                     out = openOutput(format, frame.rate * frame.channels * 2 / 4)   // 约 0.25 秒缓冲
-                    line = out
-                    if (state == State.PAUSED) {
-                        out.stop()
-                    } else {
-                        out.start()
-                        state = State.PLAYING
-                    }
+                    if (!attachOutput(gen, out)) return
                 }
                 // 暂停：不再往声卡写数据，原地等待。
                 // （Java Sound 在输出停止时被写数据会自动重新开始或直接返回，
                 //   不这样等的话会一口气把整首歌"读完"，然后误以为放完了跳下一首）
                 while (state == State.PAUSED && gen == generation) {
-                    if (out.isRunning) out.stop()   // 写数据时可能被自动重新开始，确保停住
+                    if (out.isRunning) synchronized(this) {
+                        if (state == State.PAUSED && line === out) out.stop()
+                    }
                     Thread.sleep(15)
                 }
                 if (gen != generation) break
@@ -738,7 +754,10 @@ object MusicPlayer {
             }
         } finally {
             try { source?.close() } catch (_: Exception) {}
-            if (line === out) line = null
+            synchronized(this) {
+                if (decodingGeneration == gen) decodingGeneration = null
+                if (line === out) line = null
+            }
             try {
                 out?.stop()
                 out?.close()
