@@ -116,7 +116,7 @@
      private List<String> configurations = Lists.newArrayList();
      @OutputDirectory
      private Object               outputDir;
-@@ -110,6 +109,7 @@
+@@ -110,11 +109,18 @@
          }
      }
  
@@ -124,6 +124,19 @@
      public FileCollection getCollections()
      {
      	List<Configuration> configs = Lists.newArrayListWithCapacity(configurations.size());
+-    	for (String s : configurations)
+-    		configs.add(getProject().getConfigurations().getByName(s));
++        for (String name : configurations) {
++            Configuration config = getProject().getConfigurations().getByName(name);
++            if (!config.isCanBeResolved()) {
++                config = config.copyRecursive();
++                config.setCanBeResolved(true);
++            }
++            configs.add(config);
++        }
+         return getProject().files(configs);
+     }
+ 
 --- a/src/main/java/net/minecraftforge/gradle/tasks/GenSrgs.java
 +++ b/src/main/java/net/minecraftforge/gradle/tasks/GenSrgs.java
 @@ -57,7 +57,7 @@
