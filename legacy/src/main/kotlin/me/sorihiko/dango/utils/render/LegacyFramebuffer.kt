@@ -10,6 +10,7 @@ internal object LegacyFramebuffer {
     private val caps get() = GLContext.getCapabilities()
     private val core get() = caps.OpenGL30 || caps.GL_ARB_framebuffer_object
     val supported get() = core || caps.GL_EXT_framebuffer_object
+    val separateReadDrawBindings get() = core || caps.GL_EXT_framebuffer_blit
 
     fun glGenFramebuffers(): Int =
         if (core) GL30.glGenFramebuffers() else EXTFramebufferObject.glGenFramebuffersEXT()

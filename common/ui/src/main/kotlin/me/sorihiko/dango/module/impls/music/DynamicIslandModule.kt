@@ -46,6 +46,17 @@ class DynamicIslandModule : Module() {
     @ModuleValue("Liquid glass", "Liquid glass background; off is a solid black pill")
     private val glass = BooleanValue(true)
 
+    // The compact pill needs less blur and a narrower lens edge than the full player window.
+    private val islandGlass = Theme.GLASS_WINDOW.copy(
+        tint = Color(0.10f, 0.10f, 0.13f, 0.10f),
+        maxLuma = 0.45f,
+        frost = 0.20f,
+        refraction = 9f,
+        bevel = 8f,
+        fallback = Color(0.10f, 0.10f, 0.13f, 0.50f),
+        shadow = ShadowStyle(Color(0f, 0f, 0f, 0.14f), 8f, Vec2(0f, -2f)),
+    )
+
     @ModuleValue("Show now playing", "Show what the built-in player is playing")
     private val showMusic = BooleanValue(true)
 
@@ -248,7 +259,7 @@ class DynamicIslandModule : Module() {
 
             ctx.pushScale(k, k, 1f)
             if (glass.get()) {
-                ctx.drawGlass(pill, Theme.GLASS_WINDOW.copy(radius = r, shadow = ShadowStyle(Color(0f, 0f, 0f, 0.14f), 8f, Vec2(0f, -2f))))
+                ctx.drawGlass(pill, islandGlass.copy(radius = r))
             } else {
                 ctx.drawShape(
                     pill,

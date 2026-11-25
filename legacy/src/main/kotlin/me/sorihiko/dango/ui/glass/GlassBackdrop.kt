@@ -4,14 +4,13 @@ import me.sorihiko.dango.legacy.LegacyGl
 import me.sorihiko.dango.legacy.mc
 import me.sorihiko.dango.shader.impls.QuadShader
 import me.sorihiko.dango.shader.impls.ui.GlassBlurShader
-import net.minecraft.client.renderer.OpenGlHelper
+import me.sorihiko.dango.utils.render.LegacyFramebuffer
 
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL12
 import org.lwjgl.opengl.GL13
 import org.lwjgl.opengl.GL20
 import org.lwjgl.opengl.GL30
-import me.sorihiko.dango.utils.render.LegacyFramebuffer
 
 import java.nio.ByteBuffer
 
@@ -44,25 +43,35 @@ class GlassBackdrop {
     fun capture() {
         val w = mc.displayWidth
         val h = mc.displayHeight
-        if (w <= 0 || h <= 0 || !LegacyFramebuffer.supported || !OpenGlHelper.isFramebufferEnabled()) {
-            ready = false
-            return
-        }
+        ready = false
+        if (w <= 0 || h <= 0 || !LegacyFramebuffer.supported) return
 
-        val previousFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING)
+        // OptiFine Fast Render can draw directly to the window while our blur FBOs still work.
+        val drawFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING)
+        val separateBindings = LegacyFramebuffer.separateReadDrawBindings
+        val readFbo = if (separateBindings) GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING) else drawFbo
+        val sourceBuffer = when (val drawBuffer = GL11.glGetInteger(GL11.GL_DRAW_BUFFER)) {
+            GL11.GL_NONE -> return
+            GL11.GL_FRONT_AND_BACK -> if (GL11.glGetBoolean(GL11.GL_DOUBLEBUFFER)) GL11.GL_BACK else GL11.GL_FRONT
+            else -> drawBuffer
+        }
         GL11.glPushAttrib(
             GL11.GL_ENABLE_BIT or GL11.GL_VIEWPORT_BIT or GL11.GL_COLOR_BUFFER_BIT or
                     GL11.GL_SCISSOR_BIT or GL11.GL_TEXTURE_BIT
         )
         try {
+            GL13.glActiveTexture(GL13.GL_TEXTURE0)
             if (w != width || h != height || captureTexture == -1) resize(w, h)
 
-            // resize 创建模糊目标时会改变绑定，恢复后再截取原画面。
-            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo)
-
-            GL13.glActiveTexture(GL13.GL_TEXTURE0)
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, captureTexture)
-            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h)
+            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, drawFbo)
+            val oldReadBuffer = GL11.glGetInteger(GL11.GL_READ_BUFFER)
+            try {
+                if (sourceBuffer != oldReadBuffer) GL11.glReadBuffer(sourceBuffer)
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, captureTexture)
+                GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h)
+            } finally {
+                if (sourceBuffer != oldReadBuffer) GL11.glReadBuffer(oldReadBuffer)
+            }
 
             GL11.glDisable(GL11.GL_BLEND)
             GL11.glDisable(GL11.GL_DEPTH_TEST)
@@ -82,7 +91,8 @@ class GlassBackdrop {
             ready = true
         } finally {
             GL20.glUseProgram(0)
-            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo)
+            LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, drawFbo)
+            if (readFbo != drawFbo) LegacyFramebuffer.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo)
             GL11.glPopAttrib()
         }
     }
