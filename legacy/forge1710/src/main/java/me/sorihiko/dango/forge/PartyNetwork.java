@@ -36,7 +36,8 @@ public final class PartyNetwork implements PartyNet.Link {
     private static FMLProxyPacket packet(String frame) {
         // One plugin message is one frame. FML's UTF8 helper limits strings to
         // 16 KiB, which an 8,000-character frame containing CJK text can exceed.
-        return new FMLProxyPacket(Unpooled.copiedBuffer(frame, StandardCharsets.UTF_8), PartyNet.CHANNEL);
+        // FML 1.7.10 sends the complete backing array, including unused bytes.
+        return new FMLProxyPacket(Unpooled.wrappedBuffer(frame.getBytes(StandardCharsets.UTF_8)), PartyNet.CHANNEL);
     }
 
     @Override
