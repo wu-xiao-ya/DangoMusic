@@ -7,6 +7,7 @@ import me.sorihiko.dango.events.TickEvent
 import me.sorihiko.dango.events.WorldRenderEndEvent
 import me.sorihiko.dango.legacy.LegacyGl
 import me.sorihiko.dango.legacy.chatCopyAt
+import me.sorihiko.dango.legacy.hasClientWorld
 import me.sorihiko.dango.legacy.mc
 import me.sorihiko.dango.legacy.suppressBackgroundMusic
 
@@ -104,7 +105,7 @@ class ForgeBridge {
     fun onRenderTick(e: ForgeTickEvent.RenderTickEvent) {
         if (e.phase == ForgeTickEvent.Phase.START) {
             hudRendered = false
-            if (hudDeferred && (mc.world == null || !OpenGlHelper.isFramebufferEnabled())) hudDeferred = false
+            if (hudDeferred && (!hasClientWorld || !OpenGlHelper.isFramebufferEnabled())) hudDeferred = false
         } else {
             renderDeferredHud()
         }
@@ -113,7 +114,7 @@ class ForgeBridge {
     private fun renderDeferredHud() {
         // StellarCore calls Forge's overlay events only when refreshing its transparent HUD texture.
         // Draw the live HUD after that cache has been composited onto the game framebuffer.
-        if (hudDeferred && mc.world != null && (!mc.gameSettings.hideGUI || mc.currentScreen != null)) {
+        if (hudDeferred && hasClientWorld && (!mc.gameSettings.hideGUI || mc.currentScreen != null)) {
             renderHud()
         }
     }
