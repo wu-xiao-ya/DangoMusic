@@ -1,5 +1,6 @@
 package me.sorihiko.dango.ui.glass
 
+import me.sorihiko.dango.DangoLogger
 import me.sorihiko.dango.legacy.LegacyGl
 import me.sorihiko.dango.legacy.mc
 import me.sorihiko.dango.shader.impls.QuadShader
@@ -24,15 +25,14 @@ class GlassBackdrop {
     private val quadShader = LegacyGl.shaderManager.get<QuadShader>()
     private val blurShader = LegacyGl.shaderManager.get<GlassBlurShader>()
 
-    private var captureTexture = -1
-    private var width = 0
-    private var height = 0
-
+    private val captured = GlassTarget()
     private val half = GlassTarget()
     private val softA = GlassTarget()
     private val softB = GlassTarget()
     private val frostA = GlassTarget()
     private val frostB = GlassTarget()
+    private val debugCapture = java.lang.Boolean.getBoolean("dangomusic.debugGlass")
+    private var lastCaptureReport: String? = null
 
     val softTexture: Int get() = softA.texture
     val frostTexture: Int get() = frostA.texture
@@ -50,6 +50,9 @@ class GlassBackdrop {
         val drawFbo = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING)
         val separateBindings = LegacyFramebuffer.separateReadDrawBindings
         val readFbo = if (separateBindings) GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING) else drawFbo
+        val samples = GL11.glGetInteger(GL13.GL_SAMPLES)
+        val multisampled = samples > 0
+        if (multisampled && !separateBindings) return
         val sourceBuffer = when (val drawBuffer = GL11.glGetInteger(GL11.GL_DRAW_BUFFER)) {
             GL11.GL_NONE -> return
             GL11.GL_FRONT_AND_BACK -> if (GL11.glGetBoolean(GL11.GL_DOUBLEBUFFER)) GL11.GL_BACK else GL11.GL_FRONT
@@ -60,35 +63,52 @@ class GlassBackdrop {
                     GL11.GL_SCISSOR_BIT or GL11.GL_TEXTURE_BIT
         )
         try {
+            val previousError = if (debugCapture) GL11.glGetError() else GL11.GL_NO_ERROR
             GL13.glActiveTexture(GL13.GL_TEXTURE0)
-            if (w != width || h != height || captureTexture == -1) resize(w, h)
+            if (w != captured.width || h != captured.height || captured.texture == -1) resize(w, h)
 
             LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, drawFbo)
             val oldReadBuffer = GL11.glGetInteger(GL11.GL_READ_BUFFER)
+            GL11.glDisable(GL11.GL_SCISSOR_TEST)
             try {
                 if (sourceBuffer != oldReadBuffer) GL11.glReadBuffer(sourceBuffer)
-                GL11.glBindTexture(GL11.GL_TEXTURE_2D, captureTexture)
-                GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h)
+                if (multisampled) {
+                    // Resolve at full size before downsampling. CopyTexSubImage cannot read a multisampled FBO.
+                    LegacyFramebuffer.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, captured.fbo)
+                    LegacyFramebuffer.resolveColor(w, h)
+                } else {
+                    GL11.glBindTexture(GL11.GL_TEXTURE_2D, captured.texture)
+                    GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h)
+                }
             } finally {
                 if (sourceBuffer != oldReadBuffer) GL11.glReadBuffer(oldReadBuffer)
             }
+            val copyError = if (debugCapture) GL11.glGetError() else GL11.GL_NO_ERROR
 
             GL11.glDisable(GL11.GL_BLEND)
             GL11.glDisable(GL11.GL_DEPTH_TEST)
             GL11.glDisable(GL11.GL_ALPHA_TEST)
-            GL11.glDisable(GL11.GL_SCISSOR_TEST)
             GL11.glDisable(GL11.GL_CULL_FACE)
             GL11.glColorMask(true, true, true, true)
 
             // 逐级 2x 降采样（双线性正好取 2x2 平均，画面移动时不闪）
-            blit(captureTexture, half)
+            blit(captured.texture, half)
             blit(half.texture, softA)
             blur(softA, softB, 1f, 2)
 
             blit(softA.texture, frostA)
             blur(frostA, frostB, 1.6f, 3)
 
-            ready = true
+            val blurError = if (debugCapture) GL11.glGetError() else GL11.GL_NO_ERROR
+            ready = copyError == GL11.GL_NO_ERROR && blurError == GL11.GL_NO_ERROR
+            if (debugCapture) {
+                val report = "size=${w}x$h drawFbo=$drawFbo readFbo=$readFbo sourceBuffer=$sourceBuffer " +
+                    "samples=$samples previousError=$previousError copyError=$copyError blurError=$blurError ready=$ready"
+                if (report != lastCaptureReport) {
+                    DangoLogger.info("Liquid glass backdrop: {}", report)
+                    lastCaptureReport = report
+                }
+            }
         } finally {
             GL20.glUseProgram(0)
             LegacyFramebuffer.glBindFramebuffer(GL30.GL_FRAMEBUFFER, drawFbo)
@@ -98,17 +118,12 @@ class GlassBackdrop {
     }
 
     private fun resize(w: Int, h: Int) {
-        width = w
-        height = h
-
-        if (captureTexture != -1) GL11.glDeleteTextures(captureTexture)
-        captureTexture = GlassTarget.createTexture(w, h)
-
         half.ensure(w / 2, h / 2)
         softA.ensure(w / 4, h / 4)
         softB.ensure(w / 4, h / 4)
         frostA.ensure(w / 8, h / 8)
         frostB.ensure(w / 8, h / 8)
+        captured.ensure(w, h)
     }
 
     private fun blit(source: Int, target: GlassTarget) {
@@ -145,11 +160,7 @@ class GlassBackdrop {
     }
 
     fun delete() {
-        if (captureTexture != -1) GL11.glDeleteTextures(captureTexture)
-        captureTexture = -1
-        listOf(half, softA, softB, frostA, frostB).forEach { it.delete() }
-        width = 0
-        height = 0
+        listOf(captured, half, softA, softB, frostA, frostB).forEach { it.delete() }
         ready = false
     }
 }

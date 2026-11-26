@@ -1,5 +1,6 @@
 package me.sorihiko.dango.utils.render
 
+import org.lwjgl.opengl.EXTFramebufferBlit
 import org.lwjgl.opengl.EXTFramebufferObject
 import org.lwjgl.opengl.GL11
 import org.lwjgl.opengl.GL30
@@ -17,6 +18,16 @@ internal object LegacyFramebuffer {
 
     fun glBindFramebuffer(target: Int, id: Int) {
         if (core) GL30.glBindFramebuffer(target, id) else EXTFramebufferObject.glBindFramebufferEXT(target, id)
+    }
+
+    fun resolveColor(width: Int, height: Int) {
+        if (core) {
+            GL30.glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST)
+        } else {
+            EXTFramebufferBlit.glBlitFramebufferEXT(
+                0, 0, width, height, 0, 0, width, height, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST
+            )
+        }
     }
 
     fun glDeleteFramebuffers(id: Int) {
