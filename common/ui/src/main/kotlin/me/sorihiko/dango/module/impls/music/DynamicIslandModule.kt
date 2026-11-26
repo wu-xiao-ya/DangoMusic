@@ -32,6 +32,16 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
+private const val COMPACT_COVER_SIZE = 22f
+private const val COMPACT_COVER_MARGIN = 9f
+private const val COMPACT_BARS_WIDTH = 14f
+private const val COMPACT_BARS_MARGIN = 12f
+private const val COMPACT_MUSIC_FIXED_WIDTH =
+    COMPACT_COVER_SIZE + 2f * COMPACT_COVER_MARGIN + COMPACT_BARS_WIDTH + 2f * COMPACT_BARS_MARGIN
+private const val COMPACT_TITLE_MAX_WIDTH = 170f
+private const val COMPACT_TITLE_MIN_WIDTH = 32f
+private const val ISLAND_SIDE_MARGIN = 12f
+
 /**
  * 灵动岛（iOS 风格的胶囊）：
  *  - 平时：用户名 · FPS · 延迟 · 时间；内置播放器在放歌时显示 封面 + 歌名 + 跳动的音浪
@@ -60,8 +70,11 @@ class DynamicIslandModule : Module() {
     @ModuleValue("Show now playing", "Show what the built-in player is playing")
     private val showMusic = BooleanValue(true)
 
-    @ModuleValue("Show player status with music", "Keep player name, FPS and time above the current song")
+    @ModuleValue("Show player status with music", "Keep player name, FPS and time visible during playback")
     private val showStatusWithMusic = BooleanValue(false)
+
+    @ModuleValue("Side-by-side layout", "Show player status and current song on one line")
+    private val sideBySide = BooleanValue(false)
 
     @ModuleValue("Song notify", "Expand to show the song on track change or pause")
     private val songNotify = BooleanValue(true)
@@ -173,7 +186,8 @@ class DynamicIslandModule : Module() {
             (16f + 8f + 10f + tw.coerceAtMost(320f) + 18f) to 52f
         }
         Kind.IDLE -> if (musicIdle && t != null) {
-            (9f + 22f + 9f + width(t.name, 12f, Theme.FONT_SEMIBOLD).coerceAtMost(170f) + 12f + 14f + 12f) to 32f
+            val titleWidth = width(t.name, 12f, Theme.FONT_SEMIBOLD).coerceAtMost(COMPACT_TITLE_MAX_WIDTH)
+            (COMPACT_MUSIC_FIXED_WIDTH + titleWidth) to 32f
         } else {
             statusWidth to 32f
         }
@@ -227,16 +241,35 @@ class DynamicIslandModule : Module() {
         val track = MusicPlayer.shownTrack
         val musicIdle = showMusic.get() && track != null && MusicPlayer.shownActive
         val combined = showStatusWithMusic.get() && showMusic.get() && track != null
-        fun hasStatusRow(kind: Kind) = combined && (kind == Kind.SONG || (kind == Kind.IDLE && musicIdle))
-        val targetStatus = hasStatusRow(want)
-        val shownStatus = hasStatusRow(shown)
+        fun hasStatus(kind: Kind) = combined && (kind == Kind.SONG || (kind == Kind.IDLE && musicIdle))
+        val targetStatus = hasStatus(want)
+        val shownStatus = hasStatus(shown)
         val needsIdle = !musicIdle && (want == Kind.IDLE || shown == Kind.IDLE)
         val parts = if (needsIdle || targetStatus || shownStatus) idleParts() else emptyList()
         val statusWidth = if (parts.isEmpty()) 0f else idleWidth(parts)
+        val platform = DangoClient.platform
+        val uiScale = min(platform.windowWidth / 1280f, platform.windowHeight / 800f).coerceAtLeast(0.5f)
+        val k = uiScale * scale.value
+        val lw = platform.windowWidth / k
+
+        // 先缩短歌名，横排塞不下封面、音浪和最短歌名时退回两行。
+        val compact = want == Kind.IDLE || shown == Kind.IDLE
+        val horizontalMusicWidth = if (sideBySide.get() && combined && musicIdle && compact) {
+            val (musicWidth) = sizeOf(Kind.IDLE, track, true, statusWidth)
+            val availableWidth = lw - 2f * ISLAND_SIDE_MARGIN - statusWidth
+            val minimumWidth = min(musicWidth, COMPACT_MUSIC_FIXED_WIDTH + COMPACT_TITLE_MIN_WIDTH)
+            if (availableWidth >= minimumWidth) min(availableWidth, musicWidth) else 0f
+        } else 0f
+        val targetHorizontal = want == Kind.IDLE && horizontalMusicWidth > 0f
+        val shownHorizontal = shown == Kind.IDLE && horizontalMusicWidth > 0f
         val targetSize = sizeOf(want, track, musicIdle, statusWidth)
         val (targetWidth, targetHeight) = targetSize
-        val tw = if (targetStatus) max(targetWidth, statusWidth) else targetWidth
-        val th = if (targetStatus) targetHeight + 32f else targetHeight
+        val tw = when {
+            targetHorizontal -> statusWidth + horizontalMusicWidth
+            targetStatus -> max(targetWidth, statusWidth)
+            else -> targetWidth
+        }
+        val th = if (targetStatus && !targetHorizontal) targetHeight + 32f else targetHeight
         val stiff = 230f
         val damp = 24f
         vw += ((tw - w) * stiff - vw * damp) * dt
@@ -245,13 +278,9 @@ class DynamicIslandModule : Module() {
         h += vh * dt
         if (w < 1f || h < 1f) return
 
-        val platform = DangoClient.platform
         val ctx = context ?: DangoClient.gfx.newCanvas().also { context = it }
         ctx.begin(glass.get(), 0, 0)
         try {
-            val uiScale = min(platform.windowWidth / 1280f, platform.windowHeight / 800f).coerceAtLeast(0.5f)
-            val k = uiScale * scale.value
-            val lw = platform.windowWidth / k
             val sf = platform.guiScale
             val top = 18f * sf / k                       // 和原来一样，留出 Boss 血条的位置
             val pill = LayoutBounds((lw - w) / 2f, top, w, h)
@@ -272,8 +301,13 @@ class DynamicIslandModule : Module() {
 
             // 内容按目标尺寸排版，在当前胶囊里居中，超出部分裁掉
             val (cw, ch) = if (shown == want) targetSize else sizeOf(shown, track, musicIdle, statusWidth)
-            val contentY = if (shownStatus) pill.y + 32f else pill.y + (h - ch) / 2f
-            val cb = LayoutBounds(pill.x + (w - cw) / 2f, contentY, cw, ch)
+            val contentY = if (shownStatus && !shownHorizontal) pill.y + 32f else pill.y + (h - ch) / 2f
+            val horizontalX = pill.x + (w - statusWidth - horizontalMusicWidth) / 2f
+            val cb = if (shownHorizontal) {
+                LayoutBounds(horizontalX + statusWidth, contentY, horizontalMusicWidth, ch)
+            } else {
+                LayoutBounds(pill.x + (w - cw) / 2f, contentY, cw, ch)
+            }
             val scX = (pill.x * k).toInt()
             val scY = (platform.windowHeight - (pill.y + h) * k).toInt()
             ctx.scissor(scX, scY, (w * k).toInt() + 1, (h * k).toInt() + 1)
@@ -281,14 +315,25 @@ class DynamicIslandModule : Module() {
             mt.clear()
             mt.clip = pill
             if (shownStatus) {
-                val status = LayoutBounds(pill.x + (w - statusWidth) / 2f, pill.y, statusWidth, 32f)
+                val status = if (shownHorizontal) {
+                    LayoutBounds(horizontalX, contentY, statusWidth, ch)
+                } else {
+                    LayoutBounds(pill.x + (w - statusWidth) / 2f, pill.y, statusWidth, 32f)
+                }
                 ctx.pushOpacity(if (targetStatus) 1f else contentAlpha)
                 drawIdle(ctx, status, parts)
                 ctx.popOpacity()
             }
             ctx.pushOpacity(contentAlpha)
             when (shown) {
-                Kind.IDLE -> if (musicIdle && track != null) drawMusicIdle(ctx, cb, track) else drawIdle(ctx, cb, parts)
+                Kind.IDLE -> if (musicIdle && track != null) {
+                    if (shownHorizontal) {
+                        ctx.drawShape(LayoutBounds(cb.x - 0.5f, cb.y + 9f, 1f, 14f), ShapeStyle(Theme.HAIRLINE, 0.5f))
+                    }
+                    drawMusicIdle(ctx, cb, track, shownHorizontal)
+                } else {
+                    drawIdle(ctx, cb, parts)
+                }
                 Kind.SONG -> if (track != null) drawSong(ctx, cb, track)
                 Kind.UPDATE -> drawUpdate(ctx, cb)
             }
@@ -317,15 +362,20 @@ class DynamicIslandModule : Module() {
         }
     }
 
-    private fun drawMusicIdle(ctx: GuiCanvas, b: LayoutBounds, t: NeteaseTrack) {
+    private fun drawMusicIdle(ctx: GuiCanvas, b: LayoutBounds, t: NeteaseTrack, horizontal: Boolean) {
         // 胶囊两头是半圆：封面往里挪一点、圆角跟着胶囊的弧度走，看起来才居中
-        val cover = LayoutBounds(b.x + 9f, b.y + 5f, 22f, 22f)
+        val cover = LayoutBounds(b.x + COMPACT_COVER_MARGIN, b.y + 5f, COMPACT_COVER_SIZE, COMPACT_COVER_SIZE)
         drawCover(ctx, cover, t.let { CoverCache.trackRounded(it, 0.36f) ?: CoverCache.track(it) })
         val playing = MusicPlayer.shownState == MusicPlayer.State.PLAYING
-        val tx = cover.right + 9f
-        val title = trim(t.name, 170f, 12f, Theme.FONT_SEMIBOLD)
+        val tx = cover.right + COMPACT_COVER_MARGIN
+        val titleLimit = if (horizontal) {
+            (b.width - COMPACT_MUSIC_FIXED_WIDTH + 0.01f).coerceAtMost(COMPACT_TITLE_MAX_WIDTH)
+        } else {
+            COMPACT_TITLE_MAX_WIDTH
+        }
+        val title = trim(t.name, titleLimit, 12f, Theme.FONT_SEMIBOLD)
         text(ctx, title, tx, b.y + 16f - 12f * 0.39f, 12f, if (playing) Theme.TEXT_PRIMARY else Theme.TEXT_SECONDARY, Theme.FONT_SEMIBOLD)
-        bars(ctx, b.right - 12f - 14f, b.y + 22f, playing, 11f)
+        bars(ctx, b.right - COMPACT_BARS_MARGIN - COMPACT_BARS_WIDTH, b.y + 22f, playing, 11f)
     }
 
     private fun updateTitle() = I18n.text("Dango Music update: ") + (UpdateChecker.available?.version ?: "")

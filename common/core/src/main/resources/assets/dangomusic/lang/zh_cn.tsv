@@ -99,7 +99,9 @@ Song notify	歌曲通知
 Expand to show the song on track change or pause	切歌或暂停时展开显示歌曲
 Island size	灵动岛大小
 Show player status with music	同时显示玩家状态
-Keep player name, FPS and time above the current song	在当前歌曲上方显示玩家名、帧率和时间
+Keep player name, FPS and time visible during playback	播放时显示玩家名、帧率和时间
+Side-by-side layout	横排布局
+Show player status and current song on one line	在同一行显示玩家状态和当前歌曲
 Notify time	通知时长
 How long song notifications stay (seconds)	歌曲通知的显示时间（秒）
 Home	首页
