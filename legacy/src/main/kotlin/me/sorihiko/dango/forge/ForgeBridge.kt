@@ -7,17 +7,22 @@ import me.sorihiko.dango.events.TickEvent
 import me.sorihiko.dango.events.WorldRenderEndEvent
 import me.sorihiko.dango.legacy.LegacyGl
 import me.sorihiko.dango.legacy.chatCopyAt
+import me.sorihiko.dango.legacy.mc
 import me.sorihiko.dango.legacy.suppressBackgroundMusic
 
 import me.sorihiko.dango.music.Dance
 import net.minecraft.client.renderer.GlStateManager
+import net.minecraft.client.renderer.OpenGlHelper
 import net.minecraft.entity.EntityLivingBase
+import net.minecraftforge.client.event.GuiScreenEvent
 import net.minecraftforge.client.event.RenderGameOverlayEvent
 import net.minecraftforge.client.event.RenderLivingEvent
 import net.minecraftforge.client.event.RenderWorldLastEvent
 import net.minecraftforge.fml.common.eventhandler.EventPriority
+import net.minecraftforge.fml.common.Loader
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent as ForgeTickEvent
+import java.lang.reflect.Modifier
 
 /**
  * 把 Forge 的事件转成 mod 自己的事件：
@@ -26,6 +31,21 @@ import net.minecraftforge.fml.common.gameevent.TickEvent as ForgeTickEvent
  *   画南瓜头遮罩之前（暗角刚画完）→ HudRenderEvent（Song card、灵动岛、Now playing，暗角压不到它们）
  */
 class ForgeBridge {
+
+    private val stellarHudCache by lazy {
+        if (!Loader.isModLoaded("stellar_core")) return@lazy null
+        try {
+            Class.forName("github.kasuminova.stellarcore.client.hudcaching.HUDCaching")
+                .getField("renderingCacheOverride")
+                .takeIf { it.type == Boolean::class.javaPrimitiveType && Modifier.isStatic(it.modifiers) }
+        } catch (_: ReflectiveOperationException) {
+            null
+        } catch (_: LinkageError) {
+            null
+        }
+    }
+    private var hudDeferred = false
+    private var hudRendered = false
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     fun onChatMouse(e: net.minecraftforge.client.event.GuiScreenEvent.MouseInputEvent.Pre) {
@@ -64,9 +84,44 @@ class ForgeBridge {
         DangoMusic.callEvent(WorldRenderEndEvent(e.partialTicks))
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(receiveCanceled = true)
     fun onOverlay(e: RenderGameOverlayEvent.Pre) {
-        if (e.type == RenderGameOverlayEvent.ElementType.HELMET) DangoMusic.callEvent(HudRenderEvent)
+        if (e.type == RenderGameOverlayEvent.ElementType.ALL) {
+            if (hudDeferred && stellarHudCache?.getBoolean(null) != true) hudDeferred = false
+            return
+        }
+        if (e.type != RenderGameOverlayEvent.ElementType.HELMET) return
+        hudDeferred = !e.isCanceled && stellarHudCache?.getBoolean(null) == true
+        if (!e.isCanceled && !hudDeferred) renderHud()
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    fun onScreenDrawBefore(e: GuiScreenEvent.DrawScreenEvent.Pre) {
+        if (e.gui === mc.currentScreen) renderDeferredHud()
+    }
+
+    @SubscribeEvent
+    fun onRenderTick(e: ForgeTickEvent.RenderTickEvent) {
+        if (e.phase == ForgeTickEvent.Phase.START) {
+            hudRendered = false
+            if (hudDeferred && (mc.world == null || !OpenGlHelper.isFramebufferEnabled())) hudDeferred = false
+        } else {
+            renderDeferredHud()
+        }
+    }
+
+    private fun renderDeferredHud() {
+        // StellarCore calls Forge's overlay events only when refreshing its transparent HUD texture.
+        // Draw the live HUD after that cache has been composited onto the game framebuffer.
+        if (hudDeferred && mc.world != null && (!mc.gameSettings.hideGUI || mc.currentScreen != null)) {
+            renderHud()
+        }
+    }
+
+    private fun renderHud() {
+        if (hudRendered) return
+        hudRendered = true
+        DangoMusic.callEvent(HudRenderEvent)
     }
 
     // ---------------------------------------------------------------- 生物跟着节奏跳
